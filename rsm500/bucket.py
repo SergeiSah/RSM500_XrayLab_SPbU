@@ -1,11 +1,12 @@
 from command import Command
-from typing import Union, Optional, Tuple
+import time
+import keyboard
 from handlers import arguments_type_checker
 import logging
 import serial
 
 
-class RSM500Bucket(object):
+class Bucket(object):
     MAX_COUNTERS = 6
 
     @arguments_type_checker
@@ -94,6 +95,18 @@ class RSM500Bucket(object):
         """
         return self.run_command(Command('GB', 'B'))
 
+    def motor_moving(self):
+        """
+        Wait while motor is moving.
+        :return: If interrupted - False, else True
+        """
+        while self.device_status() & 1:
+            time.sleep(0.1)
+            if keyboard.is_pressed("q"):
+                self.motor_stop()
+                return False
+        return True
+
     def motor_error(self):
         """
         Reading the value of the step counter mismatch during re-initialization. Returns the value of the counter of
@@ -106,7 +119,7 @@ class RSM500Bucket(object):
 
     @arguments_type_checker
     def threshold_set(self, counter_id: int, threshold_id: int, value: int):
-        assert 0 <= counter_id < RSM500Bucket.MAX_COUNTERS
+        assert 0 <= counter_id < Bucket.MAX_COUNTERS
         assert threshold_id in [0, 1]
         assert 0 <= value < 4096
 
@@ -120,7 +133,7 @@ class RSM500Bucket(object):
         :param threshold_id: Threshold (0 - bottom, 1 - up)
         :return: Error code (1 byte)
         """
-        assert 0 <= counter_id < RSM500Bucket.MAX_COUNTERS
+        assert 0 <= counter_id < Bucket.MAX_COUNTERS
         assert threshold_id in [0, 1]
 
         return self.run_command(Command('TG', '>H', 1, 1), counter_id, threshold_id)
@@ -158,7 +171,7 @@ class RSM500Bucket(object):
         :param counter_id: Number of the detector
         :return: 4 bytes, unsigned integer
         """
-        assert 0 <= counter_id < RSM500Bucket.MAX_COUNTERS
+        assert 0 <= counter_id < Bucket.MAX_COUNTERS
 
         return self.run_command(Command('CG', '>I', 1), counter_id)
 
@@ -171,6 +184,18 @@ class RSM500Bucket(object):
         """
         return self.run_command(Command('EG', '>H'))
 
+    def counter_working(self):
+        """
+        Wait while counter is working during set exposure time.
+        :return: If interrupted - False, else True
+        """
+        while self.exposure_get_remaining() > 0:
+            time.sleep(0.1)
+            if keyboard.is_pressed("q"):
+                self.counter_stop()
+                return False
+        return True
+
     @arguments_type_checker
     def photocathode_set_voltage(self, counter_id: int, voltage: int):
         """
@@ -179,7 +204,7 @@ class RSM500Bucket(object):
         :param voltage: Voltage on the detector
         :return: Error code (1 byte)
         """
-        assert 0 <= counter_id < RSM500Bucket.MAX_COUNTERS
+        assert 0 <= counter_id < Bucket.MAX_COUNTERS
         assert 0 <= voltage < 2048
 
         return self.run_command(Command('DS', 'B', 1, 4), counter_id, voltage)
@@ -191,7 +216,7 @@ class RSM500Bucket(object):
         :param counter_id: Number of the detector
         :return: Photocathode voltage (2 bytes, unsigned integer)
         """
-        assert 0 <= counter_id < RSM500Bucket.MAX_COUNTERS
+        assert 0 <= counter_id < Bucket.MAX_COUNTERS
 
         return self.run_command(Command('DG', '>H', 1), counter_id)
 
@@ -207,7 +232,7 @@ class RSM500Bucket(object):
         :param enabled: True or False
         :return: Error code (1 byte)
         """
-        assert 0 <= counter_id < RSM500Bucket.MAX_COUNTERS
+        assert 0 <= counter_id < Bucket.MAX_COUNTERS
 
         en_val = 0
         if enabled:
