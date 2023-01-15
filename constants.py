@@ -5,3 +5,5 @@ MOTOR_0 = 0  # Energy scan
 MOTOR_1 = 1  # Rotation of the sample holder
 MOTOR_2 = 2  # Rotation of the second detector
 MOTOR_3 = 3  # Sample holder movement along 'x' axis
+
+KEY_FOR_INTERRUPTION = 'q'
