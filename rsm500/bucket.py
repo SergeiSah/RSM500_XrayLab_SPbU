@@ -1,7 +1,8 @@
 from command import Command
+from handlers import arguments_type_checker_in_class
 import time
 import keyboard
-from handlers import arguments_type_checker
+from config.definitions import KEY_FOR_INTERRUPTION
 import logging
 import serial
 
@@ -9,7 +10,7 @@ import serial
 class Bucket(object):
     MAX_COUNTERS = 6
 
-    @arguments_type_checker
+    @arguments_type_checker_in_class
     def __init__(self, port: serial.Serial):
         """
 
@@ -19,7 +20,7 @@ class Bucket(object):
         logging.debug('RSM500: init with port %s', port.name)
         self.port = port
 
-    @arguments_type_checker
+    @arguments_type_checker_in_class
     def run_command(self, command: Command, *args: int):
         out_cmd = command.format(*args)
         self.port.write(out_cmd.encode())
@@ -29,7 +30,7 @@ class Bucket(object):
             return result[0]
         return result
 
-    @arguments_type_checker
+    @arguments_type_checker_in_class
     def motor_move(self, direction: int, steps: int):
         """
         Move the motor on nnnnn steps in direction d.
@@ -43,7 +44,7 @@ class Bucket(object):
         error = self.run_command(Command('GM', 'B', 1, 5), direction, steps)
         return error
 
-    @arguments_type_checker
+    @arguments_type_checker_in_class
     def motor_select(self, motor_id: int):
         return self.run_command(Command('SM', 'B', 1), motor_id) 
         
@@ -76,7 +77,7 @@ class Bucket(object):
         """
         return self.run_command(Command('GP', '>h'))
 
-    @arguments_type_checker
+    @arguments_type_checker_in_class
     def motor_set_position(self, position: int):
         """
         Recording the position of the motor. The number nnnnn is written into the motor position counter.
@@ -102,7 +103,7 @@ class Bucket(object):
         """
         while self.device_status() & 1:
             time.sleep(0.1)
-            if keyboard.is_pressed("q"):
+            if keyboard.is_pressed(KEY_FOR_INTERRUPTION):
                 self.motor_stop()
                 return False
         return True
@@ -117,18 +118,24 @@ class Bucket(object):
         """
         return self.run_command(Command('GE', '>h'))
 
-    @arguments_type_checker
+    @arguments_type_checker_in_class
     def threshold_set(self, counter_id: int, threshold_id: int, value: int):
+        """
+        Setting one detector threshold.
+        :param counter_id: Number of the detector.
+        :param threshold_id: Threshold (0 - bottom, 1 - up)
+        :return: Error code (1 byte)
+        """
         assert 0 <= counter_id < Bucket.MAX_COUNTERS
         assert threshold_id in [0, 1]
         assert 0 <= value < 4096
 
         return self.run_command(Command('TS', 'B', 1, 1, 4), counter_id, threshold_id, value)
 
-    @arguments_type_checker
+    @arguments_type_checker_in_class
     def threshold_get(self, counter_id: int, threshold_id: int):
         """
-        Setting one detector threshold.
+        Getting one detector threshold.
         :param counter_id: Number of the detector.
         :param threshold_id: Threshold (0 - bottom, 1 - up)
         :return: Error code (1 byte)
@@ -138,7 +145,7 @@ class Bucket(object):
 
         return self.run_command(Command('TG', '>H', 1, 1), counter_id, threshold_id)
 
-    @arguments_type_checker
+    @arguments_type_checker_in_class
     def exposure_set(self, value: int):
         """
         Exposure setting for counting pulses in all the detectors.
@@ -164,7 +171,7 @@ class Bucket(object):
         """
         return self.run_command(Command('CB', 'B'))
 
-    @arguments_type_checker
+    @arguments_type_checker_in_class
     def counter_get(self, counter_id: int):
         """
         Reading the result of the count (a set of pulses) in the specified channel.
@@ -191,12 +198,12 @@ class Bucket(object):
         """
         while self.exposure_get_remaining() > 0:
             time.sleep(0.1)
-            if keyboard.is_pressed("q"):
+            if keyboard.is_pressed(KEY_FOR_INTERRUPTION):
                 self.counter_stop()
                 return False
         return True
 
-    @arguments_type_checker
+    @arguments_type_checker_in_class
     def photocathode_set_voltage(self, counter_id: int, voltage: int):
         """
         Setting the desired voltage on the photocathode of the given detector.
@@ -209,7 +216,7 @@ class Bucket(object):
 
         return self.run_command(Command('DS', 'B', 1, 4), counter_id, voltage)
 
-    @arguments_type_checker
+    @arguments_type_checker_in_class
     def photocathode_get_voltage(self, counter_id: int):
         """
         Reading the current voltage on the photocathode of the given detector.
@@ -220,7 +227,7 @@ class Bucket(object):
 
         return self.run_command(Command('DG', '>H', 1), counter_id)
 
-    @arguments_type_checker
+    @arguments_type_checker_in_class
     def photocathode_enable(self, counter_id: int, enabled: bool):
         """
         Enable or disable the photocathode for the specified detector. If 'disable', the detector will turn off, that
