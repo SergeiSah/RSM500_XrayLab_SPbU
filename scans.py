@@ -1,10 +1,12 @@
-import pandas as pd
 from settings import Settings
 from config.definitions import *
 from convertor import *
 from bucket import Bucket
+from visualization import Plotter
 import os
 import re
+import pandas as pd
+from multiprocessing import Pipe, Process
 
 
 class Scan:
@@ -21,12 +23,15 @@ class Scan:
         self.rsm.motor_select(4)    # remove voltage from all motors
 
     def en_scan(self, direction: int, exposure: int, steps_num: int, step_rev: float, start_rev: float):
-        meta = {'scan_type': 'energy scan',
+        meta = {'scan_type': 'en_scan',
                 'exposure': f'{exposure} s'}
         self.rsm.motor_select(MOTOR_0)
         self.results.rename(columns={'x_scale': 'rev'}, inplace=True)
         sign = {1: 1, 0: -1}[direction]     # 1 - rev increasing, 0 - rev decreasing
         file_num = self.max_file_number()   # determine the file number to save results
+
+        # create parallel process for plotter and connection to it (pipe)
+        pipe, plot_process = self.initialize_plotter(meta['scan_type'])
 
         for step_num in range(steps_num + 1):
             data = self.measurement(exposure)
@@ -46,8 +51,11 @@ class Scan:
             data = pd.concat([x_scale, data], axis=1)
             self.results = pd.concat([self.results, data])
 
+            pipe.send(self.results)  # send results to parallel process to plot them
+
             self.save_results(file_num, meta)
 
+        plot_process.terminate()
         self.initial_state()
 
     def dscan(self):
@@ -58,6 +66,15 @@ class Scan:
 
     def eff(self):
         pass
+
+    @staticmethod
+    def initialize_plotter(scan_mode: str) -> Pipe and Process:
+        data_pipe, plot_pipe = Pipe()
+        plotter = Plotter()
+        plot_process = Process(target=plotter, args=(plot_pipe, scan_mode), daemon=True)
+        plot_process.start()
+
+        return data_pipe, plot_process
 
     def measurement(self, exposure: int):
         self.rsm.exposure_set(exposure * 10)
