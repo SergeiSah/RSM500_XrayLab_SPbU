@@ -4,14 +4,11 @@ from config.definitions import ROOT_DIR
 
 
 class Settings:
-    path_to_settings_ini = os.path.join(ROOT_DIR, 'settings.ini')
-    # TODO: define path to .ini file through os.path
+    path_to_settings_ini = os.path.join(ROOT_DIR, r'config\settings.ini')
 
     def __init__(self):
         self.__config = configparser.ConfigParser()
-        self.__config.read('../settings.ini')
-
-        self._port = ''
+        self.__config.read(self.path_to_settings_ini)
 
     @property
     def port(self):
@@ -20,6 +17,15 @@ class Settings:
     @port.setter
     def port(self, value: str):
         self.__config['DEFAULT']['port'] = value
+        self.write_changes_to_settings()
+
+    @property
+    def baudrate(self):
+        return self.__config['DEFAULT']['baudrate']
+
+    @baudrate.setter
+    def baudrate(self, value):
+        self.__config['DEFAULT']['baudrate'] = value
         self.write_changes_to_settings()
 
     @property
@@ -32,7 +38,7 @@ class Settings:
         self.write_changes_to_settings()
 
     def write_changes_to_settings(self):
-        with open('../settings.ini', 'w') as configfile:
+        with open(self.path_to_settings_ini, 'w') as configfile:
             self.__config.write(configfile)
 
 
