@@ -3,10 +3,12 @@ from config.definitions import *
 from convertor import *
 from bucket import Bucket
 from visualization import Plotter
+from multiprocessing import Pipe, Process
+from handlers import arguments_type_checker_in_class
+from typing import Union
 import os
 import re
 import pandas as pd
-from multiprocessing import Pipe, Process
 
 
 class Scan:
@@ -22,12 +24,13 @@ class Scan:
         self.results = pd.DataFrame(columns=['x_scale', 'counter_1', 'counter_2'])
         self.rsm.motor_select(4)    # remove voltage from all motors
 
-    def en_scan(self, direction: int, exposure: int, steps_num: int, step_rev: float, start_rev: float):
+    @arguments_type_checker_in_class
+    def en_scan(self, exposure: int, steps_num: int, step_rev: float, start_rev: float):
         meta = {'scan_type': 'en_scan',
                 'exposure': f'{exposure} s'}
         self.rsm.motor_select(MOTOR_0)
         self.results.rename(columns={'x_scale': 'rev'}, inplace=True)
-        sign = {1: 1, 0: -1}[direction]     # 1 - rev increasing, 0 - rev decreasing
+        direction = DIRECTION['positive'][MOTOR_0] if step_rev > 0 else DIRECTION['negative'][MOTOR_0]
         file_num = self.max_file_number()   # determine the file number to save results
 
         # create parallel process for plotter and connection to it (pipe)
@@ -40,13 +43,13 @@ class Scan:
             if data is None:
                 break
 
-            self.rsm.motor_move(direction, rev_to_steps(step_rev))
+            self.rsm.motor_move(direction, rev_to_steps(abs(step_rev)))
             # if the motor moving was interrupted - stop scan
             if not self.rsm.motor_moving():
                 break
 
             # Add obtained data to `results` attribute of the Scan object
-            rev = start_rev + step_num * sign * step_rev
+            rev = start_rev + step_num * step_rev
             x_scale = pd.DataFrame({'rev': [rev]})
             data = pd.concat([x_scale, data], axis=1)
             self.results = pd.concat([self.results, data])
@@ -99,9 +102,10 @@ class Scan:
         new_file = f'DM_{str.zfill(str(file_num + 1), 4)}.txt'
 
         # save metadata at the header of the file
-        with open(self.path_to_files + new_file) as file:
+        with open(self.path_to_files + new_file, 'w') as file:
             for key, value in meta_data.items():
-                file.write(f'# {key}: {value:>15}\n')   # definition of metadata string style
+                file.write(f'# {key}:\t{value}\n')   # definition of metadata string style
+            file.write('\n')
 
         self.results.to_csv(self.path_to_files + new_file,
                             sep='\t',
