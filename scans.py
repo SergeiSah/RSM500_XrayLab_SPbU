@@ -1,14 +1,14 @@
-from settings import Settings
-from config.definitions import *
-from convertor import *
-from bucket import Bucket
-from visualization import Plotter
-from multiprocessing import Pipe, Process
-from handlers import arguments_type_checker_in_class
-from typing import Union
 import os
 import re
+from multiprocessing import Pipe, Process
+
 import pandas as pd
+
+from bucket import Bucket
+from config.definitions import *
+from convertor import *
+from settings import Settings
+from visualization import Plotter
 
 
 class Scan:
@@ -24,10 +24,10 @@ class Scan:
         self.results = pd.DataFrame(columns=['x_scale', 'counter_1', 'counter_2'])
         self.rsm.motor_select(4)    # remove voltage from all motors
 
-    @arguments_type_checker_in_class
     def en_scan(self, exposure: int, steps_num: int, step_rev: float, start_rev: float):
         meta = {'scan_type': 'en_scan',
                 'exposure': f'{exposure} s'}
+
         self.rsm.motor_select(MOTOR_0)
         self.results.rename(columns={'x_scale': 'rev'}, inplace=True)
         direction = DIRECTION['positive'][MOTOR_0] if step_rev > 0 else DIRECTION['negative'][MOTOR_0]
@@ -36,16 +36,19 @@ class Scan:
         # create parallel process for plotter and connection to it (pipe)
         pipe, plot_process = self.initialize_plotter(meta['scan_type'])
 
+        was_stopped = False
         for step_num in range(steps_num + 1):
             data = self.measurement(exposure)
 
             # if the measurement was interrupted - stop scan
             if data is None:
+                was_stopped = True
                 break
 
             self.rsm.motor_move(direction, rev_to_steps(abs(step_rev)))
             # if the motor moving was interrupted - stop scan
             if not self.rsm.motor_moving():
+                was_stopped = True
                 break
 
             # Add obtained data to `results` attribute of the Scan object
@@ -61,7 +64,13 @@ class Scan:
         plot_process.terminate()
         self.initial_state()
 
+        return was_stopped
+
     def dscan(self):
+        pass
+
+    def one_motor_scan(self):
+        # sceleton for wrappers dscan and en_scan
         pass
 
     def d2scan(self):
@@ -83,8 +92,8 @@ class Scan:
         self.rsm.exposure_set(exposure * 10)
         self.rsm.counter_start()
         if self.rsm.counter_working():  # if the measurement was not interrupted, return the data obtained
-            return pd.DataFrame({'counter_1': [self.rsm.counter_get(FIRST_COUNTER)],
-                                 'counter_2': [self.rsm.counter_get(SECOND_COUNTER)]})
+            return pd.DataFrame({'counter_1': [self.rsm.counter_get(COUNTER_1)],
+                                 'counter_2': [self.rsm.counter_get(COUNTER_2)]})
         return None
 
     def max_file_number(self):

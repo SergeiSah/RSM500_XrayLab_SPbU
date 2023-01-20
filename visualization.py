@@ -1,5 +1,6 @@
-import matplotlib.pyplot as plt
 from multiprocessing import Pipe
+
+import matplotlib.pyplot as plt
 
 
 class Plotter:
@@ -25,14 +26,14 @@ class Plotter:
 
     def __call__(self, pipe: Pipe, scan_mode: str):
         self.pipe = pipe
-        names = self.labels[scan_mode]
+        # names = self.labels[scan_mode]
 
         self.fig, self.axs = plt.subplots(nrows=2, ncols=1)
 
         self.axs[0].set_title('Detector 1')
-        self.axs[0].set_ylabel(names['y_label'])
+        # self.axs[0].set_ylabel(names['y_label'])
         self.axs[1].set_title('Detector 2')
-        self.axs[1].set_xlabel(names['x_label'])
+        # self.axs[1].set_xlabel(names['x_label'])
 
         timer = self.fig.canvas.new_timer(interval=100)
         timer.add_callback(self.update_plot)
