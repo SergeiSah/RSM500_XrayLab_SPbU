@@ -1,8 +1,10 @@
+import re
+
+import serial
+
+from bucket import Bucket
 from command_run import CommandRunner
 from settings import Settings
-import re
-from bucket import Bucket
-import serial
 
 
 def main():
@@ -13,7 +15,6 @@ def main():
     while True:
         # extraction from the command the mode name and arguments
         mode, *args = re.sub('\s+', ' ', input('> ').strip()).split(' ')
-        args = [eval(arg) for arg in args]
 
         if mode in ['close', 'quit', 'c', 'q']:
             break
