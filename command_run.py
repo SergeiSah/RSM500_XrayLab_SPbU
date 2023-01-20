@@ -15,7 +15,9 @@ class CommandRunner:
                     'Input step value in rev of the reel: ',
                     'Input start rev of the reel: '],
         'move': ['Input motor number: ',
-                 'Input step: ']
+                 'Input step: '],
+        'setV': [f'Input voltage for the photocathode of the detector {i+1}: ' for i in range(2)],
+        'setT': [f'Input the {th} threshold: ' for th in ['lower', 'upper']]
     }
 
     def __init__(self, rsm: Bucket):
@@ -36,26 +38,37 @@ class CommandRunner:
 
     def run_command(self, mode, *args):
         try:
-            self.modes[mode](*args)
+            command = self.modes[mode]
+            # reduce arguments to datatypes of the desired function
+            _args = reduce_datatypes_to_func(command, *args)
+
+            # if there are no arguments or their number is invalid, input with hints
+            if _args is None:
+                _args = []
+                for phrase, param_type in zip(self.phrases[mode], command.__annotations__.values()):
+                    _args.append(param_type(input(phrase)))
+
+            command(*_args)
         except KeyError:
-            self.log.error(f'Command {mode} does not exist.')
-            time.sleep(0.1)
+            print(f'Command {mode} does not exist.')
+        except ValueError:
+            print('Invalid value of the argument')
 
-    def run_en_scan(self, *args):
-        # reduce datatypes of the entered arguments
-        _args = reduce_datatypes_to_func(self.scan.en_scan, *args)
+    def run_en_scan(self, exposure: int, step_num: int, step: float, start: float):
+        # # reduce datatypes of the entered arguments
+        # _args = reduce_datatypes_to_func(self.scan.en_scan, *args)
+        #
+        # # if there are no arguments, or their number is incorrect
+        # if _args is None:
+        #     # TODO: Determine, why 1 sec exposure doesn't work
+        #     exposure = int(input('Input exposure in seconds: '))
+        #     step_num = int(input('Input number of steps: '))
+        #     step = float(input('Input step value in rev of the reel: '))
+        #     start = float(input('Input start rev of the reel: '))
+        #     _args = (exposure, step_num, step, start)
 
-        # if there are no arguments, or their number is incorrect
-        if _args is None:
-            # TODO: Determine, why 1 sec exposure doesn't work
-            exposure = int(input('Input exposure in seconds: '))
-            step_num = int(input('Input number of steps: '))
-            step = float(input('Input step value in rev of the reel: '))
-            start = float(input('Input start rev of the reel: '))
-            _args = (exposure, step_num, step, start)
-
-        self.log.info('Start en_scan {0} {1} {2} {3}'.format(*_args))
-        was_stopped = self.scan.en_scan(*_args)
+        self.log.info(f'Start en_scan {exposure} {step_num} {step} {start}')
+        was_stopped = self.scan.en_scan(exposure, step_num, step, start)
         if not was_stopped:
             self.log.info(f'en_scan has been completed. Motor {MOTOR_0} position: {self.rsm.motor_get_position()}')
             return 0
@@ -63,31 +76,31 @@ class CommandRunner:
         self.log.info(f'en_scan has been stopped. Motor {MOTOR_0} position: {self.rsm.motor_get_position()}')
         return -1
 
-    def run_motor_move(self, *args):
-        # if there are no arguments, or their number is incorrect
-        _args = reduce_datatypes([int, float], *args)
-
-        if _args is None:
-            motor = int(input('Input motor number: '))
-            steps = float(input('Input step: '))
-            _args = (motor, steps)
+    def run_motor_move(self, motor: int, steps: float):
+        # # if there are no arguments, or their number is incorrect
+        # _args = reduce_datatypes([int, float], *args)
+        #
+        # if _args is None:
+        #     motor = int(input('Input motor number: '))
+        #     steps = float(input('Input step: '))
+        #     _args = (motor, steps)
 
         # determine value of direction for the command
-        if _args[1] < 0:
-            direction = DIRECTION['negative'][_args[0]]
-        elif _args[1] > 0:
-            direction = DIRECTION['positive'][_args[0]]
+        if steps < 0:
+            direction = DIRECTION['negative'][motor]
+        elif steps > 0:
+            direction = DIRECTION['positive'][motor]
         else:
             print('Step cannot be 0.')
             return -1
 
-        self.rsm.motor_select(_args[0])
-        step = to_step(_args[0], abs(_args[1]))
+        self.rsm.motor_select(motor)
+        step = to_step(motor, abs(steps))
 
-        self.log.info(f'Start motor {_args[0]} moving')
+        self.log.info(f'Start motor {motor} moving')
 
         # bypass the restriction for step value for MOTOR_0
-        if _args[0] == MOTOR_0 and step >= 32768:
+        if motor == MOTOR_0 and step >= 32768:
 
             repetitions = step // 32767
             residual = step % 32767
@@ -109,22 +122,16 @@ class CommandRunner:
             is_arrived = self.rsm.motor_moving()
 
         if is_arrived:
-            self.log.info(f'The motor {_args[0]} has arrived, position: {self.rsm.motor_get_position()}')
+            self.log.info(f'The motor {motor} has arrived, position: {self.rsm.motor_get_position()}')
         else:
-            self.log.info(f'The motor {_args[0]} has been stopped, position: {self.rsm.motor_get_position()}')
+            self.log.info(f'The motor {motor} has been stopped, position: {self.rsm.motor_get_position()}')
 
         self.rsm.motor_select(4)
         return 0
 
-    def set_voltage(self, *args):
-        if not args or len(args) != 2:
-            detector_1_v = int(input('Input voltage for the photocathode of the detector 1: '))
-            detector_2_v = int(input('Input voltage for the photocathode of the detector 2: '))
-            args = (detector_1_v, detector_2_v)
-
-        self.rsm.photocathode_set_voltage(COUNTER_1, args[0])
-        self.rsm.photocathode_set_voltage(COUNTER_2, args[1])
-
+    def set_voltage(self, detector_1_v: int, detector_2_v: int):
+        self.rsm.photocathode_set_voltage(COUNTER_1, detector_1_v)
+        self.rsm.photocathode_set_voltage(COUNTER_2, detector_2_v)
         self.log.info(f'Voltage on the photocathode of the detector 1: {self.rsm.photocathode_get_voltage(COUNTER_1)}')
         self.log.info(f'Voltage on the photocathode of the detector 2: {self.rsm.photocathode_get_voltage(COUNTER_2)}')
         return 0
@@ -133,17 +140,12 @@ class CommandRunner:
         print(f'Detector 1 photocathode voltage: {self.rsm.photocathode_get_voltage(COUNTER_1)}')
         print(f'Detector 2 photocathode voltage: {self.rsm.photocathode_get_voltage(COUNTER_2)}')
 
-    def set_threshold(self, *args):
-        if not args or len(args) != 2:
-            low_th = int(input('Input the lower threshold: '))
-            top_th = int(input('Input the upper threshold: '))
-            args = (low_th, top_th)
-
-        if args[0] >= args[1]:
+    def set_threshold(self, low_th: int, up_th: int):
+        if low_th >= up_th:
             self.log.error('The lower threshold cannot be higher than the upper threshold')
             return -1
 
-        for id_level, value in zip([LOWER_THRESHOLD, UPPER_THRESHOLD], args):
+        for id_level, value in zip([LOWER_THRESHOLD, UPPER_THRESHOLD], [low_th, up_th]):
             self.rsm.threshold_set(COUNTER_1, id_level, value)
             self.rsm.threshold_set(COUNTER_2, id_level, value)
 
