@@ -10,12 +10,10 @@ import serial
 class Bucket(object):
     MAX_COUNTERS = 6
 
-    @arguments_type_checker_in_class
     def __init__(self, port: serial.Serial):
         """
 
         :param port: serial port object
-        :type port: serial.Serial
         """
         logging.debug('RSM500: init with port %s', port.name)
         self.port = port
@@ -34,6 +32,7 @@ class Bucket(object):
     def motor_move(self, direction: int, steps: int):
         """
         Move the motor on nnnnn steps in direction d.
+
         :param direction: Direction of motor rotation
         :param steps: Number of steps, no more than 32768
         :return: Error code (1 byte)
@@ -59,6 +58,7 @@ class Bucket(object):
         &h04 - availability of goniometer initialization
         &h02 - if this bit is NOT SET, the upper limit switch is triggered
         &h01 - if this bit is NOT SET, the lower limit switch is triggered
+
         :return: 1 byte
         """
         return self.run_command(Command('RG', 'B'))
@@ -66,6 +66,7 @@ class Bucket(object):
     def motor_initialize(self):
         """
         Initialization of the motor - the motor is moved to the main limit switch and its position is set to zero.
+
         :return: Error code (1 byte)
         """
         return self.run_command(Command('GI', 'B'))
@@ -73,6 +74,7 @@ class Bucket(object):
     def motor_get_position(self):
         """
         Reading the position of the motor.
+
         :return: Current motor position (2 bytes) - signed integer
         """
         return self.run_command(Command('GP', '>h'))
@@ -82,6 +84,7 @@ class Bucket(object):
         """
         Recording the position of the motor. The number nnnnn is written into the motor position counter.
         The initialization flag is reset.
+
         :param position: Numerical representation of the position to be set
         :return: Error code (1 byte)
         """
@@ -92,6 +95,7 @@ class Bucket(object):
     def motor_stop(self):
         """
         Interrupting the movement of the motor. Current position is not reset.
+
         :return: Error code (1 byte)
         """
         return self.run_command(Command('GB', 'B'))
@@ -99,6 +103,7 @@ class Bucket(object):
     def motor_moving(self):
         """
         Wait while motor is moving.
+
         :return: If interrupted - False, else True
         """
         while self.device_status() & 1:
@@ -114,6 +119,7 @@ class Bucket(object):
         motor steps at the moment of reaching the home position sensor (2 bytes) - a signed integer. If initialization
         was not carried out or it is the first one after switching on, it returns 0.
         For a serviceable motor with an accurate limit switch, this modulo value should not exceed 2.
+
         :return: The value of the steps counter
         """
         return self.run_command(Command('GE', '>h'))
@@ -122,8 +128,10 @@ class Bucket(object):
     def threshold_set(self, counter_id: int, threshold_id: int, value: int):
         """
         Setting one detector threshold.
+
         :param counter_id: Number of the detector.
-        :param threshold_id: Threshold (0 - bottom, 1 - up)
+        :param threshold_id: Threshold identifier (0 - bottom, 1 - up)
+        :param value: Threshold value
         :return: Error code (1 byte)
         """
         assert 0 <= counter_id < Bucket.MAX_COUNTERS
@@ -136,6 +144,7 @@ class Bucket(object):
     def threshold_get(self, counter_id: int, threshold_id: int):
         """
         Getting one detector threshold.
+
         :param counter_id: Number of the detector.
         :param threshold_id: Threshold (0 - bottom, 1 - up)
         :return: Error code (1 byte)
@@ -149,6 +158,7 @@ class Bucket(object):
     def exposure_set(self, value: int):
         """
         Exposure setting for counting pulses in all the detectors.
+
         :param value: Exposure value in tenths of a second (0 - 9999). If zero exposure is set, the counters
         immediately (without the ''counter_start' command) are switched on to the continuous operation mode
         :return: Error code (1 byte)
@@ -160,6 +170,7 @@ class Bucket(object):
     def counter_start(self):
         """
         Starting a count. Turns on all counters for the specified exposure time ('exposure_set' command).
+
         :return: Error code (1 byte)
         """
         return self.run_command(Command('CS', 'B'))
@@ -167,6 +178,7 @@ class Bucket(object):
     def counter_stop(self):
         """
         Count interruption. Stops all counters. The contents of the counters are not reset.
+
         :return: Error code (1 byte)
         """
         return self.run_command(Command('CB', 'B'))
@@ -175,6 +187,7 @@ class Bucket(object):
     def counter_get(self, counter_id: int):
         """
         Reading the result of the count (a set of pulses) in the specified channel.
+
         :param counter_id: Number of the detector
         :return: 4 bytes, unsigned integer
         """
@@ -187,6 +200,7 @@ class Bucket(object):
         Reading the current exposure. When the counters are running continuously, the command returns the "hardware"
         time (in milliseconds) that has elapsed since the start of the counters. With the counters running normally,
         the command still returns the remaining exposure in tenths of a second.
+
         :return: 2 bytes - the value of the "remaining" exposure in tenths of a second.
         """
         return self.run_command(Command('EG', '>H'))
@@ -194,6 +208,7 @@ class Bucket(object):
     def counter_working(self):
         """
         Wait while counter is working during set exposure time.
+
         :return: If interrupted - False, else True
         """
         while self.exposure_get_remaining() > 0:
@@ -207,6 +222,7 @@ class Bucket(object):
     def photocathode_set_voltage(self, counter_id: int, voltage: int):
         """
         Setting the desired voltage on the photocathode of the given detector.
+
         :param counter_id: Number of the detector
         :param voltage: Voltage on the detector
         :return: Error code (1 byte)
@@ -220,6 +236,7 @@ class Bucket(object):
     def photocathode_get_voltage(self, counter_id: int):
         """
         Reading the current voltage on the photocathode of the given detector.
+
         :param counter_id: Number of the detector
         :return: Photocathode voltage (2 bytes, unsigned integer)
         """
@@ -235,6 +252,7 @@ class Bucket(object):
         command (#Dn.IV) will be set on the detector. If no 'photocathode_set_voltage' command has been received since
         the device was turned on or the 'device_reset' command was issued, the operating voltage from the device
         parameters (#Dn. WV).
+
         :param counter_id: Number of the detector.
         :param enabled: True or False
         :return: Error code (1 byte)
@@ -259,6 +277,7 @@ class Bucket(object):
         &h04 - Filter changer or crystal changer is working.
         &h02 - Sample changer is working.
         &h01 - The motor is working.
+
         :return: 1 byte
         """
         return self.run_command(Command('RB', 'B'))
@@ -266,6 +285,7 @@ class Bucket(object):
     def device_version(self):
         """
         Reading the version number of the controller program.
+
         :return: Returns 2 bytes. The high byte is the "high" part of the version number, the low byte is the low one.
         """
         (high, low) = self.run_command(Command('VS', 'BB'))
@@ -274,6 +294,7 @@ class Bucket(object):
     def device_reset(self):
         """
         Software reset of the controller. All movements are interrupted and the detectors turn off "to zero".
+
         :return: Error code 1 byte
         """
         return self.run_command(Command('RS', 'B'))
@@ -281,6 +302,7 @@ class Bucket(object):
     def device_get_error(self):
         """
         Read error byte.
+
         :return: Last error code (1 byte). If there are no errors, it returns zero.
         """
         return self.run_command(Command('RE', 'B'))
