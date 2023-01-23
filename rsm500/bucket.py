@@ -1,14 +1,17 @@
-from command import Command
-from handlers import arguments_type_checker_in_class
-import time
-import keyboard
-from config.definitions import KEY_FOR_INTERRUPTION
 import logging
+import time
+
+import keyboard
 import serial
+
+from command import Command
+from config.definitions import KEY_FOR_INTERRUPTION
+from handlers import arguments_type_checker_in_class
 
 
 class Bucket(object):
     MAX_COUNTERS = 6
+    DELAY = 0.05
 
     def __init__(self, port: serial.Serial):
         """
@@ -107,7 +110,7 @@ class Bucket(object):
         :return: If interrupted - False, else True
         """
         while self.device_status() & 1:
-            time.sleep(0.1)
+            time.sleep(self.DELAY)
             if keyboard.is_pressed(KEY_FOR_INTERRUPTION):
                 self.motor_stop()
                 return False
@@ -212,7 +215,7 @@ class Bucket(object):
         :return: If interrupted - False, else True
         """
         while self.exposure_get_remaining() > 0:
-            time.sleep(0.1)
+            time.sleep(self.DELAY)
             if keyboard.is_pressed(KEY_FOR_INTERRUPTION):
                 self.counter_stop()
                 return False

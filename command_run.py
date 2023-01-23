@@ -1,22 +1,21 @@
-import time
-from handlers import reduce_datatypes, reduce_datatypes_to_func
-from scans import Scan
 from bucket import Bucket
-from inspect import signature
 from convertor import *
 from definitions import *
+from handlers import reduce_datatypes_to_func
 from logger import LogHandler
+from scans import Scan
 
 
 class CommandRunner:
     phrases = {
-        'en_scan': ['Input exposure in seconds: ',
-                    'Input number of steps: ',
-                    'Input step value in rev of the reel: ',
-                    'Input start rev of the reel: '],
+        'escan': ['Input exposure in seconds: ',
+                  'Input number of steps: ',
+                  'Input step value in rev of the reel: ',
+                  'Input start rev of the reel: '],
+        'mscan': [],
         'move': ['Input motor number: ',
                  'Input step: '],
-        'setV': [f'Input voltage for the photocathode of the detector {i+1}: ' for i in range(2)],
+        'setV': [f'Input voltage for the photocathode of the detector {i + 1}: ' for i in range(2)],
         'setT': [f'Input the {th} threshold: ' for th in ['lower', 'upper']]
     }
 
@@ -28,7 +27,8 @@ class CommandRunner:
         self.scan = Scan(self.rsm)
 
         self.modes = {
-            'en_scan': self.run_en_scan,
+            'escan': self.run_en_scan,
+            'mscan': self.run_manual_scan,
             'move': self.run_motor_move,
             'setV': self.set_voltage,
             'setT': self.set_threshold,
@@ -55,36 +55,16 @@ class CommandRunner:
             print('Invalid value of the argument')
 
     def run_en_scan(self, exposure: int, step_num: int, step: float, start: float):
-        # # reduce datatypes of the entered arguments
-        # _args = reduce_datatypes_to_func(self.scan.en_scan, *args)
-        #
-        # # if there are no arguments, or their number is incorrect
-        # if _args is None:
-        #     # TODO: Determine, why 1 sec exposure doesn't work
-        #     exposure = int(input('Input exposure in seconds: '))
-        #     step_num = int(input('Input number of steps: '))
-        #     step = float(input('Input step value in rev of the reel: '))
-        #     start = float(input('Input start rev of the reel: '))
-        #     _args = (exposure, step_num, step, start)
-
-        self.log.info(f'Start en_scan {exposure} {step_num} {step} {start}')
-        was_stopped = self.scan.en_scan(exposure, step_num, step, start)
+        self.log.info(f'Start escan {exposure} {step_num} {step} {start}')
+        was_stopped = self.scan.energy_scan(exposure, step_num, step, start)
         if not was_stopped:
-            self.log.info(f'en_scan has been completed. Motor {MOTOR_0} position: {self.rsm.motor_get_position()}')
+            self.log.info(f'escan has been completed. Motor {MOTOR_0} position: {self.rsm.motor_get_position()}')
             return 0
 
-        self.log.info(f'en_scan has been stopped. Motor {MOTOR_0} position: {self.rsm.motor_get_position()}')
+        self.log.info(f'escan has been stopped. Motor {MOTOR_0} position: {self.rsm.motor_get_position()}')
         return -1
 
     def run_motor_move(self, motor: int, steps: float):
-        # # if there are no arguments, or their number is incorrect
-        # _args = reduce_datatypes([int, float], *args)
-        #
-        # if _args is None:
-        #     motor = int(input('Input motor number: '))
-        #     steps = float(input('Input step: '))
-        #     _args = (motor, steps)
-
         # determine value of direction for the command
         if steps < 0:
             direction = DIRECTION['negative'][motor]
@@ -97,7 +77,7 @@ class CommandRunner:
         self.rsm.motor_select(motor)
         step = to_step(motor, abs(steps))
 
-        self.log.info(f'Start motor {motor} moving')
+        self.log.info(f'Start motor {motor} moving from position {self.rsm.motor_get_position()}')
 
         # bypass the restriction for step value for MOTOR_0
         if motor == MOTOR_0 and step >= 32768:
@@ -157,7 +137,10 @@ class CommandRunner:
 
     def get_thresholds(self):
         for i, cnt in enumerate([COUNTER_1, COUNTER_2]):
-            print(f'Thresholds of the detector {i+1}: ', end='')
+            print(f'Thresholds of the detector {i + 1}: ', end='')
             for th in [LOWER_THRESHOLD, UPPER_THRESHOLD]:
                 print(f'{self.rsm.threshold_get(cnt, th)}', end=' ')
             print()
+
+    def run_manual_scan(self):
+        self.scan.manual_scan()

@@ -1,7 +1,8 @@
-import os
 import re
 from multiprocessing import Pipe, Process
+from typing import Union
 
+import numpy as np
 import pandas as pd
 
 from bucket import Bucket
@@ -21,15 +22,14 @@ class Scan:
         self.initial_state()
 
     def initial_state(self):
-        self.results = pd.DataFrame(columns=['x_scale', 'counter_1', 'counter_2'])
+        self.results = pd.DataFrame(columns=['counter_1', 'counter_2'])
         self.rsm.motor_select(4)    # remove voltage from all motors
 
-    def en_scan(self, exposure: int, steps_num: int, step_rev: float, start_rev: float):
-        meta = {'scan_type': 'en_scan',
+    def energy_scan(self, exposure: int, steps_num: int, step_rev: float, start_rev: float):
+        meta = {'scan_type': 'escan',
                 'exposure': f'{exposure} s'}
 
         self.rsm.motor_select(MOTOR_0)
-        self.results.rename(columns={'x_scale': 'rev'}, inplace=True)
         direction = DIRECTION['positive'][MOTOR_0] if step_rev > 0 else DIRECTION['negative'][MOTOR_0]
         file_num = self.max_file_number()   # determine the file number to save results
 
@@ -45,21 +45,18 @@ class Scan:
                 was_stopped = True
                 break
 
+            # Add obtained data to `results` attribute of the Scan object
+            rev = start_rev + step_num * step_rev
+            self.results.loc[rev] = data
+
+            pipe.send(self.results)  # send results to parallel process to plot them
+            self.save_results(file_num, meta)
+
             self.rsm.motor_move(direction, rev_to_steps(abs(step_rev)))
             # if the motor moving was interrupted - stop scan
             if not self.rsm.motor_moving():
                 was_stopped = True
                 break
-
-            # Add obtained data to `results` attribute of the Scan object
-            rev = start_rev + step_num * step_rev
-            x_scale = pd.DataFrame({'rev': [rev]})
-            data = pd.concat([x_scale, data], axis=1)
-            self.results = pd.concat([self.results, data])
-
-            pipe.send(self.results)  # send results to parallel process to plot them
-
-            self.save_results(file_num, meta)
 
         plot_process.terminate()
         self.initial_state()
@@ -79,6 +76,28 @@ class Scan:
     def eff(self):
         pass
 
+    def manual_scan(self, exposure=1, time_steps_on_plot=30):
+        # TODO: add parameters to settings
+        meta = {'scan_type': 'mscan'}
+        self.results = pd.DataFrame(data=[*np.zeros((time_steps_on_plot, 2))], columns=['counter_1', 'counter_2'])
+        self.results.index = np.arange(-time_steps_on_plot * exposure, 0, exposure)
+        pipe, plot_process = self.initialize_plotter(meta['scan_type'])
+
+        elapsed_time = 0
+        while True:
+            data = self.measurement(exposure)
+
+            if data is None:
+                break
+
+            self.results.loc[elapsed_time] = list(map(lambda x: x / exposure, data))    # data in counts per second
+            self.results.drop([self.results.index[0]], inplace=True)
+            pipe.send(self.results)
+            elapsed_time += exposure
+
+        plot_process.terminate()
+        self.initial_state()
+
     @staticmethod
     def initialize_plotter(scan_mode: str) -> Pipe and Process:
         data_pipe, plot_pipe = Pipe()
@@ -88,12 +107,11 @@ class Scan:
 
         return data_pipe, plot_process
 
-    def measurement(self, exposure: int):
-        self.rsm.exposure_set(exposure * 10)
+    def measurement(self, exposure: Union[int, float]):
+        self.rsm.exposure_set(int(exposure * 10))
         self.rsm.counter_start()
         if self.rsm.counter_working():  # if the measurement was not interrupted, return the data obtained
-            return pd.DataFrame({'counter_1': [self.rsm.counter_get(COUNTER_1)],
-                                 'counter_2': [self.rsm.counter_get(COUNTER_2)]})
+            return [self.rsm.counter_get(COUNTER_1), self.rsm.counter_get(COUNTER_2)]
         return None
 
     def max_file_number(self):
@@ -121,7 +139,3 @@ class Scan:
                             index=False,
                             mode='a',
                             float_format='%.3f')
-
-
-if __name__ == '__main__':
-    print()

@@ -13,7 +13,7 @@ MOTOR_1 = 1  # rotation of the sample holder
 MOTOR_2 = 2  # rotation of the second detector
 MOTOR_3 = 3  # sample holder movement along 'x' axis
 
-KEY_FOR_INTERRUPTION = 'q'  # TODO: Перенести в settings
+KEY_FOR_INTERRUPTION = 'ctrl+q'  # TODO: Перенести в settings
 
 DIRECTION = {
     'negative': {MOTOR_0: 0, MOTOR_1: 0, MOTOR_2: 0, MOTOR_3: 0},
