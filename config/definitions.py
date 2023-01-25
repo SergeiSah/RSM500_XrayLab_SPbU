@@ -16,6 +16,6 @@ MOTOR_3 = 3  # sample holder movement along 'x' axis
 KEY_FOR_INTERRUPTION = 'ctrl+q'  # TODO: Перенести в settings
 
 DIRECTION = {
-    'negative': {MOTOR_0: 0, MOTOR_1: 0, MOTOR_2: 0, MOTOR_3: 0},
-    'positive': {MOTOR_0: 1, MOTOR_1: 1, MOTOR_2: 1, MOTOR_3: 1}
+    'negative': {MOTOR_0: 0, MOTOR_1: 0, MOTOR_2: 1, MOTOR_3: 0},
+    'positive': {MOTOR_0: 1, MOTOR_1: 1, MOTOR_2: 0, MOTOR_3: 1}
 }
