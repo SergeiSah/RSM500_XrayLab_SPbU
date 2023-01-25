@@ -1,7 +1,7 @@
 from bucket import Bucket
 from convertor import *
 from definitions import *
-from handlers import reduce_datatypes_to_func
+from handlers import convert_datatypes_to_func, check_exposure
 from logger import LogHandler
 from scans import Scan
 
@@ -40,7 +40,7 @@ class CommandRunner:
         try:
             command = self.modes[mode]
             # reduce arguments to datatypes of the desired function
-            _args = reduce_datatypes_to_func(command, *args)
+            _args = convert_datatypes_to_func(command, *args)
 
             # if there are no arguments or their number is invalid, input with hints
             if _args is None:
@@ -54,7 +54,10 @@ class CommandRunner:
         except ValueError:
             print('Invalid value of the argument')
 
-    def run_en_scan(self, exposure: int, step_num: int, step: float, start: float):
+    def run_en_scan(self, exposure: float, step_num: int, step: float, start: float):
+        if not check_exposure(exposure):
+            return -1
+
         self.log.info(f'Start escan {exposure} {step_num} {step} {start}')
         was_stopped = self.scan.energy_scan(exposure, step_num, step, start)
         if not was_stopped:
@@ -142,5 +145,7 @@ class CommandRunner:
                 print(f'{self.rsm.threshold_get(cnt, th)}', end=' ')
             print()
 
-    def run_manual_scan(self):
-        self.scan.manual_scan()
+    def run_manual_scan(self, exposure: float = 1., time_steps_on_plot: int = 30):
+        if not check_exposure(exposure):
+            return -1
+        self.scan.manual_scan(exposure, time_steps_on_plot)
