@@ -25,7 +25,7 @@ class Scan:
         self.results = pd.DataFrame(columns=['counter_1', 'counter_2'])
         self.rsm.motor_select(4)    # remove voltage from all motors
 
-    def energy_scan(self, exposure: int, steps_num: int, step_rev: float, start_rev: float):
+    def energy_scan(self, exposure: float, steps_num: int, step_rev: float, start_rev: float):
         meta = {'scan_type': 'escan',
                 'exposure': f'{exposure} s'}
 
@@ -76,7 +76,7 @@ class Scan:
     def eff(self):
         pass
 
-    def manual_scan(self, exposure=1, time_steps_on_plot=30):
+    def manual_scan(self, exposure, time_steps_on_plot):
         # TODO: add parameters to settings
         meta = {'scan_type': 'mscan'}
         self.results = pd.DataFrame(data=[*np.zeros((time_steps_on_plot, 2))], columns=['counter_1', 'counter_2'])
@@ -136,6 +136,6 @@ class Scan:
 
         self.results.to_csv(self.path_to_files + new_file,
                             sep='\t',
-                            index=False,
+
                             mode='a',
                             float_format='%.3f')
