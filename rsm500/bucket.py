@@ -5,7 +5,7 @@ import keyboard
 import serial
 
 from command import Command
-from config.definitions import KEY_FOR_INTERRUPTION
+from definitions import *
 from handlers import arguments_type_checker_in_class
 
 
@@ -137,8 +137,8 @@ class Bucket(object):
         :param value: Threshold value
         :return: Error code (1 byte)
         """
-        assert 0 <= counter_id < Bucket.MAX_COUNTERS
-        assert threshold_id in [0, 1]
+        assert counter_id in [COUNTER_1, COUNTER_2]
+        assert threshold_id in [LOWER_THRESHOLD, UPPER_THRESHOLD]
         assert 0 <= value < 4096
 
         return self.run_command(Command('TS', 'B', 1, 1, 4), counter_id, threshold_id, value)
@@ -227,10 +227,10 @@ class Bucket(object):
         Setting the desired voltage on the photocathode of the given detector.
 
         :param counter_id: Number of the detector
-        :param voltage: Voltage on the detector
+        :param voltage: Voltage on the photocathode of the detector
         :return: Error code (1 byte)
         """
-        assert 0 <= counter_id < Bucket.MAX_COUNTERS
+        assert counter_id in [COUNTER_1, COUNTER_2]
         assert 0 <= voltage < 2048
 
         return self.run_command(Command('DS', 'B', 1, 4), counter_id, voltage)

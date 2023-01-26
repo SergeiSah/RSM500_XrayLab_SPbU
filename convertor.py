@@ -1,21 +1,35 @@
+from definitions import *
+
+
 def rev_to_steps(rev: float) -> int:
     return int(rev * 75000)  # TODO: 75000 determine in settings
 
 
+def distance_to_steps(distance: float) -> int:
+    # TODO: determine dependence of distance on motor step
+    return int(distance)
+
+
 def grad_to_steps(grad: float) -> int:
-    return int(grad * 8000 / 90)
+    return int(round(grad * 8000 / 90))
 
 
-def step_to_revs(step: int) -> float:
-    return round(step / 75000, 4)
+def step_to_revs(motor_step: int) -> float:
+    return round(motor_step / 75000, 4)
 
 
-def step_to_grads(step: int) -> float:
-    return round(step / 8000 * 90, 2)
+def step_to_grads(motor_step: int) -> float:
+    return round(motor_step / 8000 * 90, 4)
 
 
-def to_step(motor: int, step: float) -> int:
+def step_to_distance(motor_step: int) -> float:
+    # TODO: determine dependence of distance on motor step
+    pass
+
+
+def to_motor_steps(motor: int, step: float) -> int:
     return {
-        0: rev_to_steps(step),
-        **dict.fromkeys([1, 2, 3], grad_to_steps(step))
+        MOTOR_0: rev_to_steps(step),
+        **dict.fromkeys([MOTOR_1, MOTOR_2], grad_to_steps(step)),
+        MOTOR_3: distance_to_steps(step)
     }[motor]

@@ -1,5 +1,6 @@
 import configparser
 import os
+
 from config.definitions import ROOT_DIR
 
 
@@ -35,6 +36,34 @@ class Settings:
     @path_for_files_save.setter
     def path_for_files_save(self, path: str):
         self.__config['PATHS']['path_for_files_save'] = path
+        self.write_changes_to_settings()
+
+    # absolute positions of the motors 1, 2, 3
+    @property
+    def apos_motor_1(self):
+        return self.__config['ABS_MOTOR_POSITIONS']['motor_1']
+
+    @apos_motor_1.setter
+    def apos_motor_1(self, value):
+        self.__config['ABS_MOTOR_POSITIONS']['motor_1'] = value
+        self.write_changes_to_settings()
+
+    @property
+    def apos_motor_2(self):
+        return self.__config['ABS_MOTOR_POSITIONS']['motor_2']
+
+    @apos_motor_2.setter
+    def apos_motor_2(self, value):
+        self.__config['ABS_MOTOR_POSITIONS']['motor_2'] = value
+        self.write_changes_to_settings()
+
+    @property
+    def apos_motor_3(self):
+        return self.__config['ABS_MOTOR_POSITIONS']['motor_3']
+
+    @apos_motor_3.setter
+    def apos_motor_3(self, value):
+        self.__config['ABS_MOTOR_POSITIONS']['motor_3'] = value
         self.write_changes_to_settings()
 
     def write_changes_to_settings(self):

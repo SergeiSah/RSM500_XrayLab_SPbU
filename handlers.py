@@ -27,7 +27,9 @@ def convert_datatypes_to_func(func, *args) -> Union[list, None]:
     defaults = list(defaults) if defaults is not None else []
     len_pos_args = len(f_param_types) - len(defaults)    # length of the positional arguments of the func
 
-    if len(f_param_types) < len(args) or len(args) < len(f_param_types) - len(defaults):
+    if len(args) == 0 and len(f_param_types) > 0:
+        return
+    elif len(f_param_types) < len(args) or len(args) < len(f_param_types) - len(defaults):
         print('Wrong number of the arguments')
         return
 
@@ -51,16 +53,3 @@ def convert_datatypes(types: list, *args) -> Union[list, None]:
     except ValueError:
         print('Invalid value of an argument')
         return
-
-
-def check_exposure(exposure: Union[int, float]) -> bool:
-    """
-    Exposure must be set between 0.1 and 999. Check given value.
-
-    :param exposure: exposure in seconds
-    :return: True if the value in the range, else False
-    """
-    if 9999 >= int(exposure * 10) >= 1:
-        return True
-    print('Invalid value of the exposure. It must be in the range [0.1, 999]')
-    return False

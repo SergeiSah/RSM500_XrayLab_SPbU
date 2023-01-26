@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 
 from bucket import Bucket
-from config.definitions import *
 from convertor import *
 from settings import Settings
 from visualization import Plotter
@@ -76,7 +75,7 @@ class Scan:
     def eff(self):
         pass
 
-    def manual_scan(self, exposure, time_steps_on_plot):
+    def manual_scan(self, exposure: float, time_steps_on_plot: int):
         # TODO: add parameters to settings
         meta = {'scan_type': 'mscan'}
         self.results = pd.DataFrame(data=[*np.zeros((time_steps_on_plot, 2))], columns=['counter_1', 'counter_2'])
