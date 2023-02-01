@@ -4,6 +4,7 @@ from definitions import *
 from handlers import convert_datatypes_to_func
 from logger import LogHandler
 from scans import Scan
+from settings import Settings
 
 
 class CommandRunner:
@@ -28,6 +29,7 @@ class CommandRunner:
 
         self.rsm = rsm
         self.scan = Scan(self.rsm)
+        self.settings = Settings()
 
         self.modes = {
             'escan': self.run_en_scan,
@@ -38,6 +40,7 @@ class CommandRunner:
             'set2T': self.set_two_threshold,
             'getV': self.get_voltage,
             'getT': self.get_thresholds,
+            **dict.fromkeys(['info', 'help'], self.info)
         }
 
     def run_command(self, mode, *args):
@@ -53,6 +56,16 @@ class CommandRunner:
         """
         try:
             command = self.modes[mode]
+
+            # output information about function
+            if len(args) > 0:
+                if 'param' in args[0]:
+                    print(f'Parameters of the [{mode}]:', *self._func_param_names(command))
+                    return 0
+                elif 'doc' == args[0]:
+                    print(command.__doc__)
+                    return 0
+
             # reduce arguments to datatypes of the desired function
             _args = convert_datatypes_to_func(command, *args)
 
@@ -63,10 +76,13 @@ class CommandRunner:
                     _args.append(param_type(input(phrase)))
 
             command(*_args)
+            return 0
         except KeyError:
             print(f'Command {mode} does not exist.')
+            return -1
         except ValueError:
             print('Invalid value of the argument')
+            return -1
 
     def run_en_scan(self, exposure: float, step_num: int, step: float, start: float):
         """
@@ -121,7 +137,7 @@ class CommandRunner:
         self.rsm.motor_select(motor)
         step = to_motor_steps(motor, abs(step))
 
-        self.log.info(f'Start motor {motor} moving from position {self.rsm.motor_get_position()}')
+        # self.log.info(f'Start motor {motor} moving from position {self.rsm.motor_get_position()}')
 
         # bypass the restriction for step value for MOTOR_0
         if motor == MOTOR_0 and step >= 32768:
@@ -183,19 +199,19 @@ class CommandRunner:
         print(f'Voltage on the photocathodes: {self.rsm.photocathode_get_voltage(COUNTER_1)}V (1), '
               f'{self.rsm.photocathode_get_voltage(COUNTER_2)}V (2)')
 
-    def set_threshold(self, detector_num: int, low_th: int, up_th: int):
+    def set_threshold(self, detector_num: int, low_threshold: int, up_threshold: int):
         """
         Set lower and upper thresholds for the given detector.
 
         :param detector_num: number of the detector (1 or 2)
-        :param low_th: lower threshold in mV
-        :param up_th: upper threshold in mV
+        :param low_threshold: lower threshold in mV
+        :param up_threshold: upper threshold in mV
         :return: 0 or -1
         """
         try:
             detector_num = {1: COUNTER_1, 2: COUNTER_2}[detector_num]
-            assert 0 <= low_th < 4096 or 0 <= low_th < 4096, 'Thresholds must be in the range [0, 4096)'
-            assert low_th < up_th, 'The lower threshold cannot be greater than or equal to the upper threshold'
+            assert 0 <= low_threshold < 4096 or 0 <= low_threshold < 4096, 'Thresholds must be in the range [0, 4096)'
+            assert low_threshold < up_threshold, 'The lower threshold cannot be greater than or equal to the upper one'
         except KeyError:
             print('Invalid number of the detector. Must be 1 or 2.')
             return -1
@@ -203,23 +219,23 @@ class CommandRunner:
             print(msg)
             return -1
 
-        for id_level, value in zip([LOWER_THRESHOLD, UPPER_THRESHOLD], [low_th, up_th]):
+        for id_level, value in zip([LOWER_THRESHOLD, UPPER_THRESHOLD], [low_threshold, up_threshold]):
             self.rsm.threshold_set(detector_num, id_level, value)
 
         self.log.info(f'Detector {detector_num} thresholds: {self.rsm.threshold_get(detector_num, LOWER_THRESHOLD)} mV,'
                       f' {self.rsm.threshold_get(detector_num, UPPER_THRESHOLD)} mV')
         return 0
 
-    def set_two_threshold(self, low_th: int, up_th: int):
+    def set_two_threshold(self, low_threshold: int, up_threshold: int):
         """
         Set the same thresholds for the both detectors.
 
-        :param low_th: lower threshold in mV
-        :param up_th: upper threshold in mV
+        :param low_threshold: lower threshold in mV
+        :param up_threshold: upper threshold in mV
         :return: 0 or -1
         """
         for detector_num in [1, 2]:
-            flag = self.set_threshold(detector_num, low_th, up_th)
+            flag = self.set_threshold(detector_num, low_threshold, up_threshold)
             if flag != 0:
                 return -1
         return 0
@@ -254,3 +270,30 @@ class CommandRunner:
 
         self.scan.manual_scan(exposure, time_steps_on_plot)
         return 0
+
+    def info(self):
+        print('\t==== List of commands with parameters ====')
+        for mode, function in self.modes.items():
+            print(f'\t[{mode}]\t', *self._func_param_names(function))
+
+        print('\n\t==========================================\n'
+              '\tCommands can be inputted in two ways:\n'
+              '\t1. mode param_1 param_2 ...\n'
+              '\t2. mode\n'
+              '\tIf only mode was inputted, instructions will appear\n')
+
+        print('\n\t============== Main settings =============\n'
+              '\tport: name of the port that connected to the RSM\'s bucket\n'
+              '\tbaudrate: connection speed in bps\n'
+              '\tDM_files_path: absolute path to the directory with datafiles\n')
+
+    @staticmethod
+    def _func_param_names(func):
+        """
+        Return list of names of the function parameters
+
+        :param func: function
+        :return: list of param names
+        """
+        params = func.__code__.co_varnames[1:func.__code__.co_argcount]
+        return list(map(lambda x: '{' + x + '}', params))
