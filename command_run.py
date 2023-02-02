@@ -1,3 +1,5 @@
+import numpy as np
+
 from bucket import Bucket
 from convertor import *
 from definitions import *
@@ -28,8 +30,8 @@ class CommandRunner:
         self.log = self.__lh.logger
 
         self.rsm = rsm
-        self.scan = Scan(self.rsm)
         self.settings = Settings()
+        self.scan = Scan(self.rsm, self.settings)
 
         self.modes = {
             'escan': self.run_en_scan,
@@ -105,7 +107,7 @@ class CommandRunner:
             return -1
 
         self.log.info(f'Start escan {exposure} {step_num} {step} {start}')
-        was_stopped = self.scan.energy_scan(exposure, step_num, step, start)
+        was_stopped = self.scan.one_motor_scan('escan', MOTOR_0, exposure, step_num, step, start)
         if not was_stopped:
             self.log.info(f'escan has been completed. Motor {MOTOR_0} position: {self.rsm.motor_get_position()}')
             return 0
@@ -123,7 +125,7 @@ class CommandRunner:
         :param step: value of the step to move motor
         :return: 0 or -1
         """
-        # TODO: define limits for relative step on the basis of absolut motor positions
+        # FIXME: define limits for relative step on the basis of absolut motor positions
 
         # determine value of direction for the command motor_move of the Bucket class
         if step < 0:
@@ -135,15 +137,15 @@ class CommandRunner:
             return -1
 
         self.rsm.motor_select(motor)
-        step = to_motor_steps(motor, abs(step))
+        m_step = to_motor_steps(motor, abs(step))
 
         # self.log.info(f'Start motor {motor} moving from position {self.rsm.motor_get_position()}')
 
         # bypass the restriction for step value for MOTOR_0
-        if motor == MOTOR_0 and step >= 32768:
+        if motor == MOTOR_0 and m_step >= 32768:
 
-            repetitions = step // 32767
-            residual = step % 32767
+            repetitions = m_step // 32767
+            residual = m_step % 32767
             is_arrived = True
 
             for i in range(repetitions):
@@ -158,8 +160,9 @@ class CommandRunner:
                 is_arrived = self.rsm.motor_moving()
 
         else:
-            self.rsm.motor_move(direction, step)
+            self.rsm.motor_move(direction, m_step)
             is_arrived = self.rsm.motor_moving()
+            self.settings.change_motor_apos(motor, m_step * np.sign(step))
 
         if is_arrived:
             self.log.info(f'The motor {motor} has arrived, position: {self.rsm.motor_get_position()}')
@@ -282,7 +285,7 @@ class CommandRunner:
               '\t2. mode\n'
               '\tIf only mode was inputted, instructions will appear\n')
 
-        print('\n\t============== Main settings =============\n'
+        print('\t============== Main settings =============\n'
               '\tport: name of the port that connected to the RSM\'s bucket\n'
               '\tbaudrate: connection speed in bps\n'
               '\tDM_files_path: absolute path to the directory with datafiles\n')
