@@ -24,7 +24,7 @@ def step_to_grads(motor_step: int) -> float:
 
 def step_to_distance(motor_step: int) -> float:
     # TODO: determine dependence of distance on motor step
-    pass
+    return float(motor_step)
 
 
 def to_motor_steps(motor: int, unit_steps: float) -> int:
