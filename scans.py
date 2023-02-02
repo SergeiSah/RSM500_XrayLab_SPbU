@@ -14,7 +14,7 @@ from visualization import Plotter
 class Scan:
     pattern = {
         'escan': 'DM',
-        **dict.fromkeys(['ascan', 'rscan'], 'DS')
+        **dict.fromkeys(['ascan', 'rscan', 'a2scan', 'r2scan'], 'DS')
     }
 
     x_scale = {
@@ -38,7 +38,7 @@ class Scan:
     def one_motor_scan(self,
                        scan_type: str,
                        motor: int,
-                       start_val: float,
+                       start_val: float,    # it is assumed that the motor is already in this position
                        steps_num: int,
                        step_val: float,
                        exposure: float):
@@ -88,9 +88,6 @@ class Scan:
         self.initial_state()
 
         return was_stopped
-
-    def two_motor_scan(self):
-        pass
 
     def eff(self):
         pass

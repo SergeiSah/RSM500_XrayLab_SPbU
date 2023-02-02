@@ -94,7 +94,7 @@ class CommandRunner:
             print('Invalid value of the argument')
             return -1
 
-    def en_scan(self, start: float, step_num: int, step: float, exposure: float, ):
+    def en_scan(self, start: float, step_num: int, step: float, exposure: float):
         """
         Run an energy scan with the given parameters.
 

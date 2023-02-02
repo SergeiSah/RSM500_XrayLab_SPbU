@@ -1,5 +1,6 @@
 ## Elements of the RSM-500
 
+![plot](https://github.com/SergeiSah/RSM500_XrayLab_SPbU/blob/master/Files/analyzing_camera_layout_1.0.png)
 
 ## Working principle
 
@@ -7,7 +8,7 @@ Program works as a command prompt. User should input a command in one of the two
 1. `> command <param_1> <param_2> ...`
 2. `> command`
 
-Inputting a command without parameters results in the prompts. To close the
+Inputting a command without parameters results in the hints. To close the
 program, one should input `close`, `quit`, `exit`, `c` or `q`.
 If one inputs `params` after a command, names of the parameters will appear. In the case of `doc` a docstrings of the 
 command will be output.
@@ -99,7 +100,7 @@ command will be output.
 
 ## Limitations
 
-There are following confines for different elements of the RSM:
+There are following confines for different parameters of the RSM's element:
 - `exposure` of the detectors: \[0.1, 999]
 - `threshold` of the detectors: \[0, 4096)
 - `voltage` on the photocathodes: \[0, 2048)
