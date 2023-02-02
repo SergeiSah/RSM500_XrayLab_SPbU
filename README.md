@@ -1,5 +1,6 @@
 ## Elements of the RSM-500
 
+![plot](./files/analyzing_camera_layout_1.0.png)
 
 ## Working principle
 
@@ -99,7 +100,7 @@ command will be output.
 
 ## Limitations
 
-There are following confines for different elements of the RSM:
+There are following confines for different parameters of the RSM's element:
 - `exposure` of the detectors: \[0.1, 999]
 - `threshold` of the detectors: \[0, 4096)
 - `voltage` on the photocathodes: \[0, 2048)
