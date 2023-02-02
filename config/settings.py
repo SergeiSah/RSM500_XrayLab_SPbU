@@ -1,7 +1,6 @@
 import configparser
-import os
 
-from config.definitions import ROOT_DIR
+from definitions import *
 
 
 class Settings:
@@ -70,7 +69,10 @@ class Settings:
         with open(self.path_to_settings_ini, 'w') as configfile:
             self.__config.write(configfile)
 
+    def change_motor_apos(self, motor_num, value):
+        motors = [MOTOR_1, MOTOR_2, MOTOR_3]
+        a_positions = [self.apos_motor_1, self.apos_motor_2, self.apos_motor_3]
 
-if __name__ == '__main__':
-    s = Settings()
-    print(s.path_to_settings_ini)
+        ind = motors.index(motor_num)   # find motor index
+        a_positions[ind] += value
+        return 0
