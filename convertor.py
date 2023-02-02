@@ -27,9 +27,17 @@ def step_to_distance(motor_step: int) -> float:
     pass
 
 
-def to_motor_steps(motor: int, step: float) -> int:
+def to_motor_steps(motor: int, unit_steps: float) -> int:
     return {
-        MOTOR_0: rev_to_steps(step),
-        **dict.fromkeys([MOTOR_1, MOTOR_2], grad_to_steps(step)),
-        MOTOR_3: distance_to_steps(step)
+        MOTOR_0: rev_to_steps(unit_steps),
+        **dict.fromkeys([MOTOR_1, MOTOR_2], grad_to_steps(unit_steps)),
+        MOTOR_3: distance_to_steps(unit_steps)
+    }[motor]
+
+
+def to_step_units(motor: int, motor_steps: int) -> float:
+    return {
+        MOTOR_0: step_to_revs(motor_steps),
+        **dict.fromkeys([MOTOR_1, MOTOR_2], step_to_grads(motor_steps)),
+        MOTOR_3: step_to_distance(motor_steps)
     }[motor]

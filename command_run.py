@@ -1,5 +1,3 @@
-import numpy as np
-
 from bucket import Bucket
 from convertor import *
 from definitions import *
@@ -16,13 +14,14 @@ class CommandRunner:
                   'Input number of steps: ',
                   'Input step value in rev of the reel: ',
                   'Input start rev of the reel: '],
-        'mscan': [],
         'move': ['Input motor number: ',
                  'Input step: '],
         'setV': [f'Input voltage for the photocathode of the detector {i + 1}: ' for i in range(2)],
         'setT': ['Input detector number: ',
                  *[f'Input the {th} threshold: ' for th in ['lower', 'upper']]],
-        'set2T': [f'Input the {th} threshold: ' for th in ['lower', 'upper']]
+        'set2T': [f'Input the {th} threshold: ' for th in ['lower', 'upper']],
+        'setAPos': ['Input motor number: '],
+        **dict.fromkeys(['mscan', 'getV', 'getT', 'getAPos'], [])   # commands without phrases
     }
 
     def __init__(self, rsm: Bucket):
@@ -40,8 +39,10 @@ class CommandRunner:
             'setV': self.set_voltage,
             'setT': self.set_threshold,
             'set2T': self.set_two_threshold,
+            'setAPos': self.set_absolute_position_zero,
             'getV': self.get_voltage,
             'getT': self.get_thresholds,
+            'getAPos': self.get_motor_absolute_position,
             **dict.fromkeys(['info', 'help'], self.info)
         }
 
@@ -106,13 +107,13 @@ class CommandRunner:
             print(msg)
             return -1
 
-        self.log.info(f'Start escan {exposure} {step_num} {step} {start}')
+        self.log.info(f'Start [escan] {exposure} {step_num} {step} {start}')
         was_stopped = self.scan.one_motor_scan('escan', MOTOR_0, exposure, step_num, step, start)
         if not was_stopped:
-            self.log.info(f'escan has been completed. Motor {MOTOR_0} position: {self.rsm.motor_get_position()}')
+            self.log.info(f'[escan] has been completed.')
             return 0
 
-        self.log.info(f'escan has been stopped. Motor {MOTOR_0} position: {self.rsm.motor_get_position()}')
+        self.log.info(f'[escan] has been stopped.')
         return -1
 
     def run_motor_move(self, motor: int, step: float):
@@ -126,6 +127,11 @@ class CommandRunner:
         :return: 0 or -1
         """
         # FIXME: define limits for relative step on the basis of absolut motor positions
+        try:
+            assert motor in [MOTOR_0, MOTOR_1, MOTOR_2, MOTOR_3], 'Wrong number of the motor'
+        except AssertionError as msg:
+            print(msg)
+            return -1
 
         # determine value of direction for the command motor_move of the Bucket class
         if step < 0:
@@ -139,7 +145,8 @@ class CommandRunner:
         self.rsm.motor_select(motor)
         m_step = to_motor_steps(motor, abs(step))
 
-        # self.log.info(f'Start motor {motor} moving from position {self.rsm.motor_get_position()}')
+        position = self.settings.get_motor_apos(motor) if motor != MOTOR_0 else self.rsm.motor_get_position()
+        self.log.info(f'Start motor {motor} moving from position {position}')
 
         # bypass the restriction for step value for MOTOR_0
         if motor == MOTOR_0 and m_step >= 32768:
@@ -162,12 +169,12 @@ class CommandRunner:
         else:
             self.rsm.motor_move(direction, m_step)
             is_arrived = self.rsm.motor_moving()
-            self.settings.change_motor_apos(motor, m_step * np.sign(step))
+            if motor != MOTOR_0:
+                self.settings.change_motor_apos(motor, to_motor_steps(motor, step))
 
-        if is_arrived:
-            self.log.info(f'The motor {motor} has arrived, position: {self.rsm.motor_get_position()}')
-        else:
-            self.log.info(f'The motor {motor} has been stopped, position: {self.rsm.motor_get_position()}')
+        status = 'arrived' if is_arrived else 'been stopped'
+        position = self.settings.get_motor_apos(motor) if motor != MOTOR_0 else self.rsm.motor_get_position()
+        self.log.info(f'The motor {motor} has {status}, position: {position}')
 
         self.rsm.motor_select(4)
         return 0
@@ -254,6 +261,29 @@ class CommandRunner:
             for th in [LOWER_THRESHOLD, UPPER_THRESHOLD]:
                 print(f'{self.rsm.threshold_get(cnt, th)}', end=' ')
             print()
+
+    def set_absolute_position_zero(self, motor_num: int):
+        """
+        Set absolute position of the motor to zero.
+
+        :param motor_num: motor number
+        :return: 0 or -1
+        """
+        current_position = self.settings.get_motor_apos(motor_num)
+        self.settings.change_motor_apos(motor_num, -current_position)
+        self.log.info(f'Absolute position of the motor {motor_num} was set to 0.')
+        return 0
+
+    def get_motor_absolute_position(self):
+        """
+        Output absolute positions of the motors.
+
+        :return: None
+        """
+
+        print('Absolute positions of the motors:')
+        for motor_num in [MOTOR_1, MOTOR_2, MOTOR_3]:
+            print(f'Motor {motor_num}: {self.settings.get_motor_apos(motor_num)}')
 
     def run_manual_scan(self, exposure: float = 1., time_steps_on_plot: int = 30):
         """
