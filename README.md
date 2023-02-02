@@ -1,6 +1,6 @@
 ## Elements of the RSM-500
 
-![plot](./files/analyzing_camera_layout_1.0.png)
+![plot](https://github.com/SergeiSah/RSM500_XrayLab_SPbU/blob/master/Files/analyzing_camera_layout_1.0.png)
 
 ## Working principle
 
