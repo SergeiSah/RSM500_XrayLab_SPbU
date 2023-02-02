@@ -4,8 +4,8 @@
 ## Working principle
 
 Program works as a command prompt. User should input a command in one of the two ways:
-1. `command <param_1> <param_2> ...`
-2. `command`
+1. `> command <param_1> <param_2> ...`
+2. `> command`
 
 Inputting a command without parameters results in the prompts. To close the
 program, one should input `close`, `quit`, `exit`, `c` or `q`.
@@ -24,6 +24,14 @@ command will be output.
     - `step_num` - number of steps in the scan
     - `step_rev` - value of each step in the rev of the reel
     - `exposure` - exposure time of the detectors in seconds
+
+
+- `ascan <motor> <start_position> <step_num> <step> <exposure>`
+
+  Run scanning by the given motor from the specified absolute position.
+  - `motor` - number of the motor
+  - `start_position` - specifies position, to which motor will move before scanning
+  - `step` - value of each step
 
 
 - `mscan <exposure_sec=1> <time_steps_on_plot=30>`

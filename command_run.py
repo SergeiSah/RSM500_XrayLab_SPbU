@@ -124,6 +124,16 @@ class CommandRunner:
         return -1
 
     def ascan(self, motor: int, start_position: float, step_num: int, step: float, exposure: float):
+        """
+        Run scanning by the given motor from the specified absolute position.
+
+        :param motor: number of the motor
+        :param start_position: specifies position, to which motor will move before scanning
+        :param step_num: number of steps
+        :param step: value of each step
+        :param exposure: time exposure of the detectors
+        :return: 0 or -1
+        """
         try:
             # TODO: define limits for relative step on the basis of absolut motor positions
             assert motor != MOTOR_0, f'Command works only for the motors {MOTOR_1}, {MOTOR_2} and {MOTOR_3}.'
