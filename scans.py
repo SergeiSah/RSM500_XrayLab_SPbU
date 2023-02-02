@@ -18,10 +18,10 @@ class Scan:
     }
 
     x_scale = {
-        MOTOR_0: 'rev',
-        MOTOR_1: 'grad',
-        MOTOR_2: 'grad',
-        MOTOR_3: 'mm',
+        MOTOR_0: 'reel [rev]',
+        MOTOR_1: 'theta [grad]',
+        MOTOR_2: '2theta [grad]',
+        MOTOR_3: 'y [mm]',
     }
 
     def __init__(self, rsm: Bucket, settings: Settings):
@@ -35,37 +35,26 @@ class Scan:
         self.results = pd.DataFrame(columns=['counter_1', 'counter_2'])
         self.rsm.motor_select(4)    # remove voltage from all motors
 
-    def ascan(self, motor_num: int, steps_num: int, step_val: float, start: float, exposure: float):
-        meta = {'scan_type': 'ascan',
-                'exposure': f'{exposure} s'}
-
-        self.rsm.motor_select(motor_num)
-        direction = DIRECTION['positive'][motor_num] if step_val > 0 else DIRECTION['negative'][motor_num]
-        pass
-
-    def rscan(self):
-        pass
-
     def one_motor_scan(self,
                        scan_type: str,
-                       motor_num: int,
-                       exposure: float,
+                       motor: int,
+                       start_val: float,
                        steps_num: int,
                        step_val: float,
-                       start_val: float):
+                       exposure: float):
 
         meta = {'scan_type': scan_type,
                 'exposure': f'{exposure} s'}
 
-        self.rsm.motor_select(motor_num)
-        direction = DIRECTION['positive'][motor_num] if step_val > 0 else DIRECTION['negative'][motor_num]
-        self.results.index.name = self.x_scale[motor_num]
+        self.rsm.motor_select(motor)
+        direction = DIRECTION['positive'][motor] if step_val > 0 else DIRECTION['negative'][motor]
+        self.results.index.name = self.x_scale[motor]
         file_num = self.max_file_number(self.pattern[scan_type] + r'_(\d*).txt')
 
-        pipe, plot_process = self.initialize_plotter(scan_type)
+        pipe, plot_process = self.initialize_plotter(scan_type, {'x_scale': self.x_scale[motor], 'y_scale': 'Counts'})
 
         was_stopped = False
-        for step_num in range(steps_num + 1):
+        for step_num in range(steps_num):
             data = self.measurement(exposure)
 
             # if the measurement was interrupted - stop scan
@@ -81,25 +70,26 @@ class Scan:
             self.save_results(self.pattern[scan_type], file_num, meta)
 
             bucket_pos_before_moving = self.rsm.motor_get_position()    # position of motor in controller
-            self.rsm.motor_move(direction, to_motor_steps(motor_num, abs(step_val)))
+            # FIXME: if motor step will be >32768, an error will rise
+            self.rsm.motor_move(direction, to_motor_steps(motor, abs(step_val)))
 
             # if the motor moving was interrupted - stop scan
             if not self.rsm.motor_moving():
                 was_stopped = True
-                if motor_num != MOTOR_0:
+                if motor != MOTOR_0:
                     delta = self.rsm.motor_get_position() - bucket_pos_before_moving
-                    self.settings.change_motor_apos(motor_num, delta)
+                    self.settings.change_motor_apos(motor, delta)
                 break
 
-            if motor_num != MOTOR_0:
-                self.settings.change_motor_apos(motor_num, to_motor_steps(motor_num, step_val))
+            if motor != MOTOR_0:
+                self.settings.change_motor_apos(motor, to_motor_steps(motor, step_val))
 
         plot_process.terminate()
         self.initial_state()
 
         return was_stopped
 
-    def d2scan(self):
+    def two_motor_scan(self):
         pass
 
     def eff(self):
@@ -110,7 +100,7 @@ class Scan:
         meta = {'scan_type': 'mscan'}
         self.results = pd.DataFrame(data=[*np.zeros((time_steps_on_plot, 2))], columns=['counter_1', 'counter_2'])
         self.results.index = np.arange(-time_steps_on_plot * exposure, 0, exposure)
-        pipe, plot_process = self.initialize_plotter(meta['scan_type'])
+        pipe, plot_process = self.initialize_plotter(meta['scan_type'], {'x_scale': 'time [sec]', 'y_scale': 'CPS'})
 
         elapsed_time = 0
         while True:
@@ -128,10 +118,10 @@ class Scan:
         self.initial_state()
 
     @staticmethod
-    def initialize_plotter(scan_mode: str) -> Pipe and Process:
+    def initialize_plotter(scan_mode: str, scales: dict) -> Pipe and Process:
         data_pipe, plot_pipe = Pipe()
         plotter = Plotter()
-        plot_process = Process(target=plotter, args=(plot_pipe, scan_mode), daemon=True)
+        plot_process = Process(target=plotter, args=(plot_pipe, scan_mode, scales), daemon=True)
         plot_process.start()
 
         return data_pipe, plot_process
@@ -147,7 +137,8 @@ class Scan:
         # list of all .txt files in the directory with data files
         data_files = list(filter(lambda f: '.txt' in f, os.listdir(self.settings.path_for_files_save)))
         # list of file numbers: DM_{number}.txt
-        nums_list = list(map(lambda f: int(re.findall(pattern, f)[0]), data_files))
+        nums_list = list(map(lambda f: re.findall(pattern, f), data_files))
+        nums_list = [int(el[0]) for el in nums_list if len(el) > 0]
 
         if len(nums_list) == 0:
             return 0
