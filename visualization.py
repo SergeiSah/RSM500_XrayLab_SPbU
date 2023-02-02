@@ -4,10 +4,6 @@ import matplotlib.pyplot as plt
 
 
 class Plotter:
-    labels = {
-        'escan': {'x_scale': 'Revs of the reel', 'y_scale': 'Counts'},
-        'mscan': {'x_scale': 'Time in seconds', 'y_scale': 'CPS'}
-    }
     font_sizes = {
         'axis': 22,
         'title': 26,
@@ -40,16 +36,15 @@ class Plotter:
         self.figure.canvas.draw()
         return True
 
-    def __call__(self, pipe: Pipe, scan_mode: str):
+    def __call__(self, pipe: Pipe, scan_mode: str, scales: dict):
         self.pipe = pipe
-        names = self.labels[scan_mode]
         self.figure = plt.figure(figsize=(10, 8))
         self.axs = []
         self.axs.append(self.figure.add_subplot(1, 1, 1))
 
         self.axs[0].set_title(scan_mode, fontsize=self.font_sizes['title'])
-        self.axs[0].set_ylabel(names['y_scale'], fontsize=self.font_sizes['axis'])
-        self.axs[0].set_xlabel(names['x_scale'], fontsize=self.font_sizes['axis'])
+        self.axs[0].set_ylabel(scales['y_scale'], fontsize=self.font_sizes['axis'])
+        self.axs[0].set_xlabel(scales['x_scale'], fontsize=self.font_sizes['axis'])
         self.axs[0].grid(True, linestyle='--')
 
         self.axs[0].plot([], [], 'r-', label='Detector 2')
