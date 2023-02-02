@@ -10,12 +10,17 @@ from settings import Settings
 class CommandRunner:
     # phrases that will appear if only the mode name without parameters was inputted
     input_phrases = {
-        'escan': ['Input exposure in seconds: ',
+        'escan': ['Input start rev of the reel: ',
                   'Input number of steps: ',
                   'Input step value in rev of the reel: ',
-                  'Input start rev of the reel: '],
-        'move': ['Input motor number: ',
-                 'Input step: '],
+                  'Input exposure in seconds: '],
+        'ascan': ['Input motor number: ',
+                  'Input start position: ',
+                  'Input number of steps: ',
+                  'Input value of each step: ',
+                  'input exposure in seconds: '],
+        'move': ['Input motor number: ', 'Input step: '],
+        'amove': ['Input motor number: ', 'Input position to move: '],
         'setV': [f'Input voltage for the photocathode of the detector {i + 1}: ' for i in range(2)],
         'setT': ['Input detector number: ',
                  *[f'Input the {th} threshold: ' for th in ['lower', 'upper']]],
@@ -33,9 +38,11 @@ class CommandRunner:
         self.scan = Scan(self.rsm, self.settings)
 
         self.modes = {
-            'escan': self.run_en_scan,
+            'escan': self.en_scan,
+            'ascan': self.ascan,
             'mscan': self.run_manual_scan,
-            'move': self.run_motor_move,
+            'move': self.motor_move,
+            'amove': self.abs_motor_move,
             'setV': self.set_voltage,
             'setT': self.set_threshold,
             'set2T': self.set_two_threshold,
@@ -87,7 +94,7 @@ class CommandRunner:
             print('Invalid value of the argument')
             return -1
 
-    def run_en_scan(self, exposure: float, step_num: int, step: float, start: float):
+    def en_scan(self, start: float, step_num: int, step: float, exposure: float, ):
         """
         Run an energy scan with the given parameters.
 
@@ -107,8 +114,8 @@ class CommandRunner:
             print(msg)
             return -1
 
-        self.log.info(f'Start [escan] {exposure} {step_num} {step} {start}')
-        was_stopped = self.scan.one_motor_scan('escan', MOTOR_0, exposure, step_num, step, start)
+        self.log.info(f'Start [escan] <{start}> <{step_num}> <{step}> <{exposure}>')
+        was_stopped = self.scan.one_motor_scan('escan', MOTOR_0, start, step_num, step, exposure)
         if not was_stopped:
             self.log.info(f'[escan] has been completed.')
             return 0
@@ -116,7 +123,32 @@ class CommandRunner:
         self.log.info(f'[escan] has been stopped.')
         return -1
 
-    def run_motor_move(self, motor: int, step: float):
+    def ascan(self, motor: int, start_position: float, step_num: int, step: float, exposure: float):
+        try:
+            # TODO: define limits for relative step on the basis of absolut motor positions
+            assert motor != MOTOR_0, f'Command works only for the motors {MOTOR_1}, {MOTOR_2} and {MOTOR_3}.'
+            assert motor in [MOTOR_1, MOTOR_2, MOTOR_3], 'Invalid number of the motor.'
+            assert 1 <= int(exposure * 10) <= 9999, f'Invalid exposure {exposure}, must be in the range of [0.1, 999]'
+            assert step_num > 0, 'Number of steps cannot be less than 0'
+        except AssertionError as msg:
+            print(msg)
+            return -1
+
+        # move to start position
+        self.abs_motor_move(motor, start_position)
+
+        self.log.info(f'Start [ascan] <{motor}> <{start_position}> <{step_num}> <{step}> <{exposure}>')
+        was_stopped = self.scan.one_motor_scan('ascan', motor, start_position, step_num, step, exposure)
+        if was_stopped:
+            self.log.info(f'[ascan] has been stopped.')
+            self.log.info(f'Motor {motor} absolute position: {self.settings.get_motor_apos(motor)}')
+            return -1
+
+        self.log.info(f'[ascan] has been completed.')
+        self.log.info(f'Motor {motor} absolute position: {self.settings.get_motor_apos(motor)}')
+        return 0
+
+    def motor_move(self, motor: int, step: float):
         # TODO: complete the doc after determination of dependence of motor steps on distance for motor_3
         """
         Move the specified motor by the given steps relative to the position where the motor is currently located.
@@ -128,7 +160,7 @@ class CommandRunner:
         """
         # FIXME: define limits for relative step on the basis of absolut motor positions
         try:
-            assert motor in [MOTOR_0, MOTOR_1, MOTOR_2, MOTOR_3], 'Wrong number of the motor'
+            assert motor in [MOTOR_0, MOTOR_1, MOTOR_2, MOTOR_3], 'Invalid number of the motor'
         except AssertionError as msg:
             print(msg)
             return -1
@@ -139,14 +171,15 @@ class CommandRunner:
         elif step > 0:
             direction = DIRECTION['positive'][motor]
         else:
-            print('Step cannot be 0.')
             return -1
 
         self.rsm.motor_select(motor)
         m_step = to_motor_steps(motor, abs(step))
 
-        position = self.settings.get_motor_apos(motor) if motor != MOTOR_0 else self.rsm.motor_get_position()
-        self.log.info(f'Start motor {motor} moving from position {position}')
+        start_pos_in_controller = self.rsm.motor_get_position()
+        start_abs_position = int(self.settings.get_motor_apos(motor)) if motor != MOTOR_0 else start_pos_in_controller
+        self.log.info(f'Start motor {motor} [move] from position {start_abs_position} '
+                      f'({start_pos_in_controller} in controller)')
 
         # bypass the restriction for step value for MOTOR_0
         if motor == MOTOR_0 and m_step >= 32768:
@@ -173,11 +206,36 @@ class CommandRunner:
                 self.settings.change_motor_apos(motor, to_motor_steps(motor, step))
 
         status = 'arrived' if is_arrived else 'been stopped'
-        position = self.settings.get_motor_apos(motor) if motor != MOTOR_0 else self.rsm.motor_get_position()
-        self.log.info(f'The motor {motor} has {status}, position: {position}')
+        end_position_in_controller = self.rsm.motor_get_position()
+        end_abs_position = int(self.settings.get_motor_apos(motor)) if motor != MOTOR_0 else end_position_in_controller
+        self.log.info(f'The motor {motor} has {status}, position: {end_abs_position} '
+                      f'({end_position_in_controller} in controller)')
+        self.log.info(f'Difference: {end_abs_position - start_abs_position} '
+                      f'({end_position_in_controller - start_pos_in_controller} in controller)')
 
         self.rsm.motor_select(4)
         return 0
+
+    def abs_motor_move(self, motor: int, position: float):
+        """
+        Move the motor to the specified position.
+
+        :param motor: motor number
+        :param position: desired position
+        :return: 0 or -1
+        """
+        try:
+            # TODO: define limits for relative step on the basis of absolut motor positions
+            assert motor != MOTOR_0, f'Command works only for the motors {MOTOR_1}, {MOTOR_2} and {MOTOR_3}.'
+            assert motor in [MOTOR_1, MOTOR_2, MOTOR_3], 'Invalid number of the motor.'
+        except AssertionError as msg:
+            print(msg)
+            return -1
+
+        current_apos = to_step_units(motor, int(self.settings.get_motor_apos(motor)))
+        step = position - current_apos
+
+        return self.motor_move(motor, step)
 
     def set_voltage(self, detector_1_v: int, detector_2_v: int):
         """
@@ -269,7 +327,7 @@ class CommandRunner:
         :param motor_num: motor number
         :return: 0 or -1
         """
-        current_position = self.settings.get_motor_apos(motor_num)
+        current_position = int(self.settings.get_motor_apos(motor_num))
         self.settings.change_motor_apos(motor_num, -current_position)
         self.log.info(f'Absolute position of the motor {motor_num} was set to 0.')
         return 0
@@ -283,7 +341,10 @@ class CommandRunner:
 
         print('Absolute positions of the motors:')
         for motor_num in [MOTOR_1, MOTOR_2, MOTOR_3]:
-            print(f'Motor {motor_num}: {self.settings.get_motor_apos(motor_num)}')
+            apos_in_motor_steps = int(self.settings.get_motor_apos(motor_num))
+            apos_in_units = to_step_units(motor_num, apos_in_motor_steps)
+            print(f'Motor {motor_num}:   {apos_in_units:.2f} {self.scan.x_scale[motor_num].split(" ")[1]:<7} '
+                  f'({apos_in_motor_steps})')
 
     def run_manual_scan(self, exposure: float = 1., time_steps_on_plot: int = 30):
         """
@@ -329,4 +390,4 @@ class CommandRunner:
         :return: list of param names
         """
         params = func.__code__.co_varnames[1:func.__code__.co_argcount]
-        return list(map(lambda x: '{' + x + '}', params))
+        return list(map(lambda x: f'<{x}>', params))
