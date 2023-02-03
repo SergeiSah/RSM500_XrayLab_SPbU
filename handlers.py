@@ -1,5 +1,8 @@
 from functools import wraps
+from inspect import signature
 from typing import Union
+
+from definitions import *
 
 
 def arguments_type_checker_in_class(func):
@@ -53,3 +56,38 @@ def convert_datatypes(types: list, *args) -> Union[list, None]:
     except ValueError:
         print('Invalid value of an argument')
         return
+
+
+def scan_check_params_and_log(scan_func):
+    @wraps(scan_func)
+    def wrapper(self, *args, **kwargs):
+        f_params = {name: val for name, val in zip(signature(scan_func).parameters, [self, *args])}
+        try:
+            if 'motor' in f_params:
+                assert f_params['motor'] != MOTOR_0, f'Command works only for the motors {MOTOR_1}, ' \
+                                                     f'{MOTOR_2} and {MOTOR_3}.'
+                assert f_params['motor'] in [MOTOR_1, MOTOR_2, MOTOR_3], 'Invalid number of the motor.'
+            assert f_params['step_num'] > 0, 'Number of steps cannot be less than 0'
+            assert 1 <= int(f_params['exposure'] * 10) <= 9999, f'Invalid exposure {f_params["exposure"]}, ' \
+                                                                f'must be in the range of [0.1, 999]'
+            # TODO: add assert for step and start/end positions
+        except AssertionError as msg:
+            print(msg)
+            return -1
+
+        f_params.pop('self', None)
+        self.log.info(f'Start [{scan_func.__name__}]' +
+                      ''.join(' <{}:{}>'.format(name, val) for name, val in f_params.items()))
+
+        was_stopped = scan_func(self, *args, **kwargs)
+
+        status = 'stopped' if was_stopped else 'completed'
+        self.log.info(f'[{scan_func.__name__}] has been {status}.')
+
+        if 'motor' in f_params:    # Write absolute position of the motor to the log file
+            self.log.info(f'Motor {f_params["motor"]} absolute position: '
+                          f'{self.settings.get_motor_apos(f_params["motor"])}')
+
+        return was_stopped
+    return wrapper
+

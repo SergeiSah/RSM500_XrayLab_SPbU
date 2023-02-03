@@ -1,7 +1,7 @@
 from bucket import Bucket
 from convertor import *
 from definitions import *
-from handlers import convert_datatypes_to_func
+from handlers import convert_datatypes_to_func, scan_check_params_and_log
 from logger import LogHandler
 from scans import Scan
 from settings import Settings
@@ -28,6 +28,7 @@ class CommandRunner:
         'setAPos': ['Input motor number: '],
         **dict.fromkeys(['mscan', 'getV', 'getT', 'getAPos'], [])   # commands without phrases
     }
+    input_phrases['a2scan'] = input_phrases['ascan'][1:]
 
     def __init__(self, rsm: Bucket):
         self.__lh = LogHandler()
@@ -40,6 +41,7 @@ class CommandRunner:
         self.modes = {
             'escan': self.en_scan,
             'ascan': self.ascan,
+            'a2scan': self.a2scan,
             'mscan': self.run_manual_scan,
             'move': self.motor_move,
             'amove': self.abs_motor_move,
@@ -94,7 +96,8 @@ class CommandRunner:
             print('Invalid value of the argument')
             return -1
 
-    def en_scan(self, start: float, step_num: int, step: float, exposure: float, ):
+    @scan_check_params_and_log
+    def en_scan(self, start: float, step_num: int, step: float, exposure: float):
         """
         Run an energy scan with the given parameters.
 
@@ -104,25 +107,12 @@ class CommandRunner:
         :param start: value in revs of the reel from which the scan starts
         :return: 0 or -1
         """
-        try:
-            assert 1 <= int(exposure * 10) <= 9999, f'Invalid exposure {exposure}, must be in the range of [0.1, 999]'
-            assert step_num > 0, 'Number of steps cannot be less than 0'
-            # TODO: determine assertions for step and start
-            # assert step > 1 / 75000
-            # assert <= start <=
-        except AssertionError as msg:
-            print(msg)
+        was_stopped = self.scan.motor_scan('escan', MOTOR_0, start, step_num, step, exposure)
+        if was_stopped:
             return -1
+        return 0
 
-        self.log.info(f'Start [escan] <{start}> <{step_num}> <{step}> <{exposure}>')
-        was_stopped = self.scan.one_motor_scan('escan', MOTOR_0, start, step_num, step, exposure)
-        if not was_stopped:
-            self.log.info(f'[escan] has been completed.')
-            return 0
-
-        self.log.info(f'[escan] has been stopped.')
-        return -1
-
+    @scan_check_params_and_log
     def ascan(self, motor: int, start_position: float, step_num: int, step: float, exposure: float):
         """
         Run scanning by the given motor from the specified absolute position.
@@ -134,28 +124,30 @@ class CommandRunner:
         :param exposure: time exposure of the detectors
         :return: 0 or -1
         """
-        try:
-            # TODO: define limits for relative step on the basis of absolut motor positions
-            assert motor != MOTOR_0, f'Command works only for the motors {MOTOR_1}, {MOTOR_2} and {MOTOR_3}.'
-            assert motor in [MOTOR_1, MOTOR_2, MOTOR_3], 'Invalid number of the motor.'
-            assert 1 <= int(exposure * 10) <= 9999, f'Invalid exposure {exposure}, must be in the range of [0.1, 999]'
-            assert step_num > 0, 'Number of steps cannot be less than 0'
-        except AssertionError as msg:
-            print(msg)
-            return -1
-
-        # move to start position
-        self.abs_motor_move(motor, start_position)
-
-        self.log.info(f'Start [ascan] <{motor}> <{start_position}> <{step_num}> <{step}> <{exposure}>')
-        was_stopped = self.scan.one_motor_scan('ascan', motor, start_position, step_num, step, exposure)
+        self.abs_motor_move(motor, start_position)  # move to start position
+        was_stopped = self.scan.motor_scan('ascan', motor, start_position, step_num, step, exposure)
         if was_stopped:
-            self.log.info(f'[ascan] has been stopped.')
-            self.log.info(f'Motor {motor} absolute position: {self.settings.get_motor_apos(motor)}')
             return -1
+        return 0
 
-        self.log.info(f'[ascan] has been completed.')
-        self.log.info(f'Motor {motor} absolute position: {self.settings.get_motor_apos(motor)}')
+    @scan_check_params_and_log
+    def a2scan(self, start_position: float, step_num: int, step: float, exposure: float):
+        """
+        Run theta - 2theta scanning from the specified absolute theta position.
+
+        :param start_position: start theta angle
+        :param step_num: number of steps in the scan
+        :param step: value for each step
+        :param exposure: time exposure of the detectors
+        :return: 0 or -1
+        """
+        # move motors to start positions
+        self.abs_motor_move(MOTOR_1, start_position)
+        self.abs_motor_move(MOTOR_2, start_position)
+        was_stopped = self.scan.motor_scan('a2scan', MOTOR_1, start_position, step_num, step, exposure,
+                                           motor2=MOTOR_2)
+        if was_stopped:
+            return -1
         return 0
 
     def motor_move(self, motor: int, step: float):

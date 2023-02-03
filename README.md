@@ -8,7 +8,7 @@ Program works as a command prompt. User should input a command in one of the two
 1. `> command <param_1> <param_2> ...`
 2. `> command`
 
-Inputting a command without parameters results in the prompts. To close the
+Inputting a command without parameters results in the hints. To close the
 program, one should input `close`, `quit`, `exit`, `c` or `q`.
 If one inputs `params` after a command, names of the parameters will appear. In the case of `doc` a docstrings of the 
 command will be output.
