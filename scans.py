@@ -35,19 +35,23 @@ class Scan:
         self.results = pd.DataFrame(columns=['counter_1', 'counter_2'])
         self.rsm.motor_select(4)    # remove voltage from all motors
 
-    def one_motor_scan(self,
-                       scan_type: str,
-                       motor: int,
-                       start_val: float,    # it is assumed that the motor is already in this position
-                       steps_num: int,
-                       step_val: float,
-                       exposure: float):
+    def motor_scan(self,
+                   scan_type: str,
+                   motor: int,
+                   start_val: float,  # it is assumed that the motor is already in this position
+                   steps_num: int,
+                   step_val: float,
+                   exposure: float,
+                   motor2: int = None):
 
         meta = {'scan_type': scan_type,
                 'exposure': f'{exposure} s'}
 
-        self.rsm.motor_select(motor)
-        direction = DIRECTION['positive'][motor] if step_val > 0 else DIRECTION['negative'][motor]
+        motors = [motor] if motor2 is None else [motor, motor2]
+        directions = [DIRECTION['positive'][motor] if step_val > 0 else DIRECTION['negative'][motor]
+                      for motor in motors]
+        step_vals = [step_val * i for i in range(1, len(motors) + 1)]   # step for the motor 2 is twice greater
+
         self.results.index.name = self.x_scale[motor]
         file_num = self.max_file_number(self.pattern[scan_type] + r'_(\d*).txt')
 
@@ -69,20 +73,25 @@ class Scan:
             pipe.send(self.results)  # send results to parallel process to plot them
             self.save_results(self.pattern[scan_type], file_num, meta)
 
-            bucket_pos_before_moving = self.rsm.motor_get_position()    # position of motor in controller
-            # FIXME: if motor step will be >32768, an error will rise
-            self.rsm.motor_move(direction, to_motor_steps(motor, abs(step_val)))
+            for motor, direction, step_val in zip(motors, directions, step_vals):
+                self.rsm.motor_select(motor)
+                bucket_pos_before_moving = self.rsm.motor_get_position()    # position of the motor in the controller
+                # FIXME: if motor step will be >32768, an error will rise
+                self.rsm.motor_move(direction, to_motor_steps(motor, abs(step_val)))
 
-            # if the motor moving was interrupted - stop scan
-            if not self.rsm.motor_moving():
-                was_stopped = True
+                # if the motor moving was interrupted - stop scan
+                if not self.rsm.motor_moving():
+                    was_stopped = True
+                    if motor != MOTOR_0:
+                        delta = self.rsm.motor_get_position() - bucket_pos_before_moving
+                        self.settings.change_motor_apos(motor, delta)
+                    break
+
                 if motor != MOTOR_0:
-                    delta = self.rsm.motor_get_position() - bucket_pos_before_moving
-                    self.settings.change_motor_apos(motor, delta)
-                break
+                    self.settings.change_motor_apos(motor, to_motor_steps(motor, step_val))
 
-            if motor != MOTOR_0:
-                self.settings.change_motor_apos(motor, to_motor_steps(motor, step_val))
+            if was_stopped:
+                break
 
         plot_process.terminate()
         self.initial_state()
