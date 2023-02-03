@@ -35,6 +35,11 @@ command will be output.
   - `step` - value of each step
 
 
+- `a2scan <start_position> <step_num> <step> <exposure>`
+
+  Run theta - 2theta scanning from the specified absolute theta position.
+
+
 - `mscan <exposure_sec=1> <time_steps_on_plot=30>`
     
     Continuously displays CPS values on a plot over time.
