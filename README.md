@@ -20,19 +20,32 @@ command will be output.
 
     Run the energy scan (measurement of the reflection spectrum) 
     with the given parameters.
-    - `start_rev` - position of the motor 0 in the rev of the reel, 
-       from which the scan will be started
-    - `step_num` - number of steps in the scan
-    - `step_rev` - value of each step in the rev of the reel
-    - `exposure` - exposure time of the detectors in seconds
+    - **start_rev** : *float* 
+       
+       position of the motor 0 in the rev of the reel, from which the scan will be started
+    - **step_num** : str
+  
+      number of steps in the scan
+    - **step_rev** : *float* 
+
+      value of each step in the rev of the reel
+    - **exposure** : *float* 
+
+      exposure time of the detectors in seconds
 
 
 - `ascan <motor> <start_position> <step_num> <step> <exposure>`
 
   Run scanning by the given motor from the specified absolute position.
-  - `motor` - number of the motor
-  - `start_position` - specifies position, to which motor will move before scanning
-  - `step` - value of each step
+  - **motor** : *int* 
+
+    number of the motor
+  - **start_position** : *float* 
+   
+    specifies position, to which motor will move before scanning
+  - **step** : *float* 
+
+    value of each step
 
 
 - `a2scan <start_position> <step_num> <step> <exposure>`
@@ -43,35 +56,48 @@ command will be output.
 - `mscan <exposure_sec=1> <time_steps_on_plot=30>`
     
     Continuously displays CPS values on a plot over time.
-    - `time_steps_on_plot` - number of the x-axis ticks on a plot
+    - **time_steps_on_plot** : *int* 
+  
+      number of the x-axis ticks on a plot
 
 
 - `move <motor> <step>`
     
    Move the specified motor by the given step relative to the position where the motor is currently located. 
    Step for the motor 0 are in the revs of the reel, for motor 1 and 2 in grads, for the motor 3 in `!!!`.
-  - `<motor>` - number of the motor
-  - `<step>` - value of step to move
+  - **motor** : *int*
+
+    number of the motor
+  - **step** : *float* 
+  
+    value of step to move
 
 
 - `amove <motor> <position>`
 
   Move the given motor to the specified absolute position.
-  - `<motor>` - number of the motor
-  - `<position>` - the absolute position to which the motor will be moved
+  - **position** : *float* 
+  
+    the absolute position to which the motor will be moved
 
 
 - `setV <voltage_det_1> <voltage_det_2>`
 
   Set voltage on the photocathodes of the detectors.
-  - `<voltage_det_>` - value of the voltage on the photocathode of the detector
+  - **voltage_det_** : *int* 
+  
+    value of the voltage on the photocathode of the detector
 
 
 - `setT <detector_num> <lower_threshold> <upper_threshold>`
 
   Set the lower and upper thresholds for the given detector.
-  - `<detector_num>` - number of the detector
-  - `<_threshold>` - value of the corresponding threshold
+  - **detector_num** : *int* 
+
+    number of the detector
+  - **_threshold** : *int*
+
+    value of the corresponding threshold
 
 
 - `set2T <lower_threshold> <upper_threshold>`
