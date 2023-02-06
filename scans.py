@@ -73,6 +73,10 @@ class Scan:
             pipe.send(self.results)  # send results to parallel process to plot them
             self.save_results(self.pattern[scan_type], file_num, meta)
 
+            # exclude motor move from last step
+            if step_num == steps_num - 1:
+                break
+
             for motor, direction, step_val in zip(motors, directions, step_vals):
                 self.rsm.motor_select(motor)
                 bucket_pos_before_moving = self.rsm.motor_get_position()    # position of the motor in the controller
@@ -141,14 +145,14 @@ class Scan:
 
     def max_file_number(self, pattern: str):
         # list of all .txt files in the directory with data files
-        data_files = list(filter(lambda f: '.txt' in f, os.listdir(self.settings.path_for_files_save)))
-        # list of file numbers: DM_{number}.txt
-        nums_list = list(map(lambda f: re.findall(pattern, f), data_files))
-        nums_list = [int(el[0]) for el in nums_list if len(el) > 0]
+        # data_files = list(filter(lambda f: '.txt' in f, os.listdir(self.settings.path_for_files_save)))
+        data_files = [f for f in os.listdir(self.settings.path_for_files_save) if f.endswith('.txt')]
+        # list of file numbers
+        # nums_list = list(map(lambda f: re.findall(pattern, f), data_files))
+        # nums_list = [int(el[0]) for el in nums_list if len(el) > 0]
+        nums_list = [int(re.findall(pattern, f)[0]) for f in data_files if re.findall(pattern, f)]
 
-        if len(nums_list) == 0:
-            return 0
-        return max(nums_list)
+        return max(nums_list) if nums_list else 0
 
     def save_results(self, file_symbol: str, file_num: int, meta_data: dict):
         # form new file name: DM_{four digits}.txt, for example: DM_0012.txt
