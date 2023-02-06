@@ -1,34 +1,13 @@
 from bucket import Bucket
 from convertor import *
-from definitions import *
-from handlers import convert_datatypes_to_func, scan_check_params_and_log
+from error_types import *
+from handlers import *
 from logger import LogHandler
 from scans import Scan
 from settings import Settings
 
 
 class CommandRunner:
-    # phrases that will appear if only the mode name without parameters was inputted
-    input_phrases = {
-        'escan': ['Input start rev of the reel: ',
-                  'Input number of steps: ',
-                  'Input step value in rev of the reel: ',
-                  'Input exposure in seconds: '],
-        'ascan': ['Input motor number: ',
-                  'Input start position: ',
-                  'Input number of steps: ',
-                  'Input value of each step: ',
-                  'input exposure in seconds: '],
-        'move': ['Input motor number: ', 'Input step: '],
-        'amove': ['Input motor number: ', 'Input position to move: '],
-        'setV': [f'Input voltage for the photocathode of the detector {i + 1}: ' for i in range(2)],
-        'setT': ['Input detector number: ',
-                 *[f'Input the {th} threshold: ' for th in ['lower', 'upper']]],
-        'set2T': [f'Input the {th} threshold: ' for th in ['lower', 'upper']],
-        'setAPos': ['Input motor number: '],
-        **dict.fromkeys(['mscan', 'getV', 'getT', 'getAPos'], [])   # commands without phrases
-    }
-    input_phrases['a2scan'] = input_phrases['ascan'][1:]
 
     def __init__(self, rsm: Bucket):
         self.__lh = LogHandler()
@@ -39,21 +18,51 @@ class CommandRunner:
         self.scan = Scan(self.rsm, self.settings)
 
         self.modes = {
-            'escan': self.en_scan,
-            'ascan': self.ascan,
-            'a2scan': self.a2scan,
-            'mscan': self.run_manual_scan,
-            'move': self.motor_move,
-            'amove': self.abs_motor_move,
-            'setV': self.set_voltage,
-            'setT': self.set_threshold,
-            'set2T': self.set_two_threshold,
-            'setAPos': self.set_absolute_position_zero,
-            'getV': self.get_voltage,
-            'getT': self.get_thresholds,
-            'getAPos': self.get_motor_absolute_position,
+            self.escan.__name__: self.escan,
+            self.ascan.__name__: self.ascan,
+            self.a2scan.__name__: self.a2scan,
+            self.mscan.__name__: self.mscan,
+            self.move.__name__: self.move,
+            self.amove.__name__: self.amove,
+            self.setV.__name__: self.setV,
+            self.setT.__name__: self.setT,
+            self.set2T.__name__: self.set2T,
+            self.setAPos.__name__: self.setAPos,
+            self.getV.__name__: self.getV,
+            self.getT.__name__: self.getT,
+            self.getAPos.__name__: self.getAPos,
             **dict.fromkeys(['info', 'help'], self.info)
         }
+
+        # phrases that will appear if only the mode name without parameters was inputted
+        self.input_phrases = {
+            self.escan.__name__: ['Input start rev of the reel: ',
+                                  'Input number of steps: ',
+                                  'Input step value in rev of the reel: ',
+                                  'Input exposure in seconds: '],
+            self.ascan.__name__: ['Input motor number: ',
+                                  'Input start position: ',
+                                  'Input number of steps: ',
+                                  'Input value of each step: ',
+                                  'input exposure in seconds: '],
+            self.move.__name__: ['Input motor number: ', 'Input step: '],
+            self.amove.__name__: ['Input motor number: ', 'Input position to move: '],
+            self.setV.__name__: [f'Input voltage for the photocathode of the detector {i + 1}: ' for i
+                                 in
+                                 range(2)], 'setT': ['Input detector number: ',
+                                                     *[f'Input the {th} threshold: ' for th in
+                                                       ['lower', 'upper']]],
+            self.set2T.__name__: [f'Input the {th} threshold: ' for th in ['lower', 'upper']],
+            self.setAPos.__name__: ['Input motor number: '],
+            **dict.fromkeys([
+                self.mscan.__name__,
+                self.getV.__name__,
+                self.getT.__name__,
+                self.getAPos.__name__
+            ], [])
+        }
+
+        self.input_phrases[self.a2scan.__name__] = self.input_phrases[self.ascan.__name__][1:]
 
     def run_command(self, mode, *args):
         """
@@ -67,6 +76,9 @@ class CommandRunner:
         :return: None
         """
         try:
+            if mode not in self.modes:
+                raise KeyError(f'Command {mode} does not exist.')
+
             command = self.modes[mode]
 
             # output information about function
@@ -88,16 +100,22 @@ class CommandRunner:
                     _args.append(param_type(input(phrase)))
 
             command(*_args)
-            return 0
-        except KeyError:
-            print(f'Command {mode} does not exist.')
-            return -1
-        except ValueError:
-            print('Invalid value of the argument')
-            return -1
 
-    @scan_check_params_and_log
-    def en_scan(self, start: float, step_num: int, step: float, exposure: float):
+        except KeyError as message:
+            print(f'Invalid key value:', message)
+        except ValueError as message:
+            print('Invalid value:', message)
+        except TypeError as message:
+            print('Invalid datatype of the value:', message)
+        except MotorException as message:
+            print('MotorException:', message)
+        except DetectorException as message:
+            print('DetectorException:', message)
+        except PlotException as message:
+            print('PlotException:', message)
+
+    @validate_and_log
+    def escan(self, start: float, step_num: int, step: float, exposure: float):
         """
         Run an energy scan with the given parameters.
 
@@ -105,14 +123,11 @@ class CommandRunner:
         :param step_num: number of steps
         :param step: value of one step in revs of the reel
         :param start: value in revs of the reel from which the scan starts
-        :return: 0 or -1
+        :return: None
         """
-        was_stopped = self.scan.motor_scan('escan', MOTOR_0, start, step_num, step, exposure)
-        if was_stopped:
-            return -1
-        return 0
+        self.scan.motor_scan('escan', MOTOR_0, start, step_num, step, exposure)
 
-    @scan_check_params_and_log
+    @validate_and_log
     def ascan(self, motor: int, start_position: float, step_num: int, step: float, exposure: float):
         """
         Run scanning by the given motor from the specified absolute position.
@@ -122,15 +137,12 @@ class CommandRunner:
         :param step_num: number of steps
         :param step: value of each step
         :param exposure: time exposure of the detectors
-        :return: 0 or -1
+        :return: None
         """
-        self.abs_motor_move(motor, start_position)  # move to start position
-        was_stopped = self.scan.motor_scan('ascan', motor, start_position, step_num, step, exposure)
-        if was_stopped:
-            return -1
-        return 0
+        self.amove(motor, start_position)  # move to start position
+        self.scan.motor_scan('ascan', motor, start_position, step_num, step, exposure)
 
-    @scan_check_params_and_log
+    @validate_and_log
     def a2scan(self, start_position: float, step_num: int, step: float, exposure: float):
         """
         Run theta - 2theta scanning from the specified absolute theta position.
@@ -139,18 +151,14 @@ class CommandRunner:
         :param step_num: number of steps in the scan
         :param step: value for each step
         :param exposure: time exposure of the detectors
-        :return: 0 or -1
+        :return: None
         """
         # move motors to start positions
-        self.abs_motor_move(MOTOR_1, start_position)
-        self.abs_motor_move(MOTOR_2, start_position)
-        was_stopped = self.scan.motor_scan('a2scan', MOTOR_1, start_position, step_num, step, exposure,
-                                           motor2=MOTOR_2)
-        if was_stopped:
-            return -1
-        return 0
+        self.amove(MOTOR_1, start_position)
+        self.amove(MOTOR_2, start_position)
+        self.scan.motor_scan('a2scan', MOTOR_1, start_position, step_num, step, exposure, motor2=MOTOR_2)
 
-    def motor_move(self, motor: int, step: float):
+    def move(self, motor: int, step: float):
         # TODO: complete the doc after determination of dependence of motor steps on distance for motor_3
         """
         Move the specified motor by the given steps relative to the position where the motor is currently located.
@@ -158,14 +166,10 @@ class CommandRunner:
 
         :param motor: number of the motor
         :param step: value of the step to move motor
-        :return: 0 or -1
+        :return: None
         """
         # FIXME: define limits for relative step on the basis of absolut motor positions
-        try:
-            assert motor in [MOTOR_0, MOTOR_1, MOTOR_2, MOTOR_3], 'Invalid number of the motor'
-        except AssertionError as msg:
-            print(msg)
-            return -1
+        validate_motor(motor)
 
         # determine value of direction for the command motor_move of the Bucket class
         if step < 0:
@@ -173,7 +177,7 @@ class CommandRunner:
         elif step > 0:
             direction = DIRECTION['positive'][motor]
         else:
-            return -1
+            return
 
         self.rsm.motor_select(motor)
         m_step = to_motor_steps(motor, abs(step))
@@ -216,30 +220,24 @@ class CommandRunner:
                       f'({end_position_in_controller - start_pos_in_controller} in controller)')
 
         self.rsm.motor_select(4)
-        return 0
 
-    def abs_motor_move(self, motor: int, position: float):
+    def amove(self, motor: int, position: float):
         """
         Move the motor to the specified position.
 
         :param motor: motor number
         :param position: desired position
-        :return: 0 or -1
+        :return: None
         """
-        try:
-            # TODO: define limits for relative step on the basis of absolut motor positions
-            assert motor != MOTOR_0, f'Command works only for the motors {MOTOR_1}, {MOTOR_2} and {MOTOR_3}.'
-            assert motor in [MOTOR_1, MOTOR_2, MOTOR_3], 'Invalid number of the motor.'
-        except AssertionError as msg:
-            print(msg)
-            return -1
+        # TODO: define limits for relative step on the basis of absolut motor positions
+        validate_motor(motor, scan_func_name=self.amove.__name__)
 
         current_apos = to_step_units(motor, int(self.settings.get_motor_apos(motor)))
         step = position - current_apos
 
-        return self.motor_move(motor, step)
+        return self.move(motor, step)
 
-    def set_voltage(self, detector_1_v: int, detector_2_v: int):
+    def setV(self, detector_1_v: int, detector_2_v: int):
         """
         Set voltage on the photocathodes of the detectors.
 
@@ -247,20 +245,17 @@ class CommandRunner:
         :param detector_2_v: voltage on photocathode of the second detector
         :return: 0 or -1
         """
-        try:
-            for voltage in [detector_1_v, detector_2_v]:
-                assert 0 <= voltage < 2048, f'Invalid value {voltage}. Voltage must be in the range of [0, 2048)'
-        except AssertionError as msg:
-            print(msg)
-            return -1
+
+        for voltage in [detector_1_v, detector_2_v]:
+            if not 0 <= voltage < 2048:
+                raise ValueError(f'Voltage on the photocathode must be in the range of [0, 2048)')
 
         self.rsm.photocathode_set_voltage(COUNTER_1, detector_1_v)
         self.rsm.photocathode_set_voltage(COUNTER_2, detector_2_v)
         self.log.info(f'Voltage on the photocathodes: {self.rsm.photocathode_get_voltage(COUNTER_1)}V (1), '
                       f'{self.rsm.photocathode_get_voltage(COUNTER_2)}V (2)')
-        return 0
 
-    def get_voltage(self):
+    def getV(self):
         """
         Output voltage on the photocathodes to console.
 
@@ -269,48 +264,41 @@ class CommandRunner:
         print(f'Voltage on the photocathodes: {self.rsm.photocathode_get_voltage(COUNTER_1)}V (1), '
               f'{self.rsm.photocathode_get_voltage(COUNTER_2)}V (2)')
 
-    def set_threshold(self, detector_num: int, low_threshold: int, up_threshold: int):
+    def setT(self, detector_num: int, low_threshold: int, up_threshold: int):
         """
         Set lower and upper thresholds for the given detector.
 
         :param detector_num: number of the detector (1 or 2)
         :param low_threshold: lower threshold in mV
         :param up_threshold: upper threshold in mV
-        :return: 0 or -1
+        :return: None
         """
-        try:
-            detector_num = {1: COUNTER_1, 2: COUNTER_2}[detector_num]
-            assert 0 <= low_threshold < 4096 or 0 <= low_threshold < 4096, 'Thresholds must be in the range [0, 4096)'
-            assert low_threshold < up_threshold, 'The lower threshold cannot be greater than or equal to the upper one'
-        except KeyError:
-            print('Invalid number of the detector. Must be 1 or 2.')
-            return -1
-        except AssertionError as msg:
-            print(msg)
-            return -1
+
+        if detector_num not in [COUNTER_1, COUNTER_2]:
+            raise DetectorException('invalid number of the detector.')
+        if not 0 <= low_threshold < 4096 or 0 <= low_threshold < 4096:
+            raise DetectorException('Thresholds must be in the range [0, 4096).')
+        if not low_threshold < up_threshold:
+            raise DetectorException('The lower threshold cannot be greater than or equal to the upper one.')
 
         for id_level, value in zip([LOWER_THRESHOLD, UPPER_THRESHOLD], [low_threshold, up_threshold]):
             self.rsm.threshold_set(detector_num, id_level, value)
 
         self.log.info(f'Detector {detector_num} thresholds: {self.rsm.threshold_get(detector_num, LOWER_THRESHOLD)} mV,'
                       f' {self.rsm.threshold_get(detector_num, UPPER_THRESHOLD)} mV')
-        return 0
 
-    def set_two_threshold(self, low_threshold: int, up_threshold: int):
+    def set2T(self, low_threshold: int, up_threshold: int):
         """
         Set the same thresholds for the both detectors.
 
         :param low_threshold: lower threshold in mV
         :param up_threshold: upper threshold in mV
-        :return: 0 or -1
+        :return: None
         """
-        for detector_num in [1, 2]:
-            flag = self.set_threshold(detector_num, low_threshold, up_threshold)
-            if flag != 0:
-                return -1
-        return 0
+        for detector_num in [COUNTER_1, COUNTER_2]:
+            self.setT(detector_num, low_threshold, up_threshold)
 
-    def get_thresholds(self):
+    def getT(self):
         """
         Output thresholds of the detectors to console.
 
@@ -322,19 +310,18 @@ class CommandRunner:
                 print(f'{self.rsm.threshold_get(cnt, th)}', end=' ')
             print()
 
-    def set_absolute_position_zero(self, motor_num: int):
+    def setAPos(self, motor_num: int):
         """
         Set absolute position of the motor to zero.
 
         :param motor_num: motor number
-        :return: 0 or -1
+        :return: None
         """
         current_position = int(self.settings.get_motor_apos(motor_num))
         self.settings.change_motor_apos(motor_num, -current_position)
         self.log.info(f'Absolute position of the motor {motor_num} was set to 0.')
-        return 0
 
-    def get_motor_absolute_position(self):
+    def getAPos(self):
         """
         Output absolute positions of the motors.
 
@@ -348,24 +335,20 @@ class CommandRunner:
             print(f'Motor {motor_num}:   {apos_in_units:.2f} {self.scan.x_scale[motor_num].split(" ")[1]:<7} '
                   f'({apos_in_motor_steps})')
 
-    def run_manual_scan(self, exposure: float = 1., time_steps_on_plot: int = 30):
+    def mscan(self, exposure: float = 1., time_steps_on_plot: int = 30):
         """
         Continuously displays CPS values on a plot over time.
 
         :param exposure: exposure time of the detectors
         :param time_steps_on_plot: number of time steps on a plot
-        :return: 0 or -1
+        :return: None
         """
 
-        try:
-            assert 1 <= int(exposure * 10) <= 9999, f'Invalid exposure {exposure}, must be in the range of [0.1, 999]'
-            assert time_steps_on_plot > 1, 'Number of steps on a plot cannot be less than 1'
-        except AssertionError as msg:
-            print(msg)
-            return -1
+        validate_exposure(exposure)
+        if not time_steps_on_plot > 1:
+            raise PlotException('Number of steps on a plot cannot be less than 1.')
 
         self.scan.manual_scan(exposure, time_steps_on_plot)
-        return 0
 
     def info(self):
         print('\t==== List of commands with parameters ====')
@@ -393,3 +376,7 @@ class CommandRunner:
         """
         params = func.__code__.co_varnames[1:func.__code__.co_argcount]
         return list(map(lambda x: f'<{x}>', params))
+
+    # TODO: delete all returns in CommandRunner methods
+    # TODO: replace assert and try on raise. Catch errors on the level of the command_run
+    # TODO: think about mocks for bucket

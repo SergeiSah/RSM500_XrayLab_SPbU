@@ -11,7 +11,7 @@ from handlers import arguments_type_checker_in_class
 
 class Bucket(object):
     MAX_COUNTERS = 6
-    DELAY = 0.05
+    DELAY = 0.01
 
     def __init__(self, port: serial.Serial):
         """
