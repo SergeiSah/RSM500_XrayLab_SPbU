@@ -3,7 +3,7 @@ from multiprocessing import Pipe
 import matplotlib.pyplot as plt
 
 
-class Plotter:
+class ScanPlotter:
     font_sizes = {
         'axis': 22,
         'title': 26,

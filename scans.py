@@ -8,7 +8,7 @@ import pandas as pd
 from bucket import Bucket
 from convertor import *
 from settings import Settings
-from visualization import Plotter
+from visualization import ScanPlotter
 
 
 class Scan:
@@ -130,7 +130,7 @@ class Scan:
     @staticmethod
     def initialize_plotter(scan_mode: str, scales: dict) -> Pipe and Process:
         data_pipe, plot_pipe = Pipe()
-        plotter = Plotter()
+        plotter = ScanPlotter()
         plot_process = Process(target=plotter, args=(plot_pipe, scan_mode, scales), daemon=True)
         plot_process.start()
 

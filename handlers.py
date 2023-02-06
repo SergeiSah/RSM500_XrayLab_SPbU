@@ -103,3 +103,8 @@ def validate_motor(motor: int, scan_func_name=None):
 def validate_exposure(exposure: float):
     if not 1 <= int(exposure * 10) <= 9999:
         raise DetectorException(f'Exposure must be in the range of [0.1, 999], your value is {exposure}.')
+
+
+def validate_photocathode_voltage(voltage: int):
+    if not 0 <= voltage < 2048:
+        raise ValueError(f'Voltage on the photocathode must be in the range of [0, 2048)')

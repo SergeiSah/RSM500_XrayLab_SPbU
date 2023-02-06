@@ -1,6 +1,5 @@
 from bucket import Bucket
 from convertor import *
-from error_types import *
 from handlers import *
 from logger import LogHandler
 from scans import Scan
@@ -247,8 +246,7 @@ class CommandRunner:
         """
 
         for voltage in [detector_1_v, detector_2_v]:
-            if not 0 <= voltage < 2048:
-                raise ValueError(f'Voltage on the photocathode must be in the range of [0, 2048)')
+            validate_photocathode_voltage(voltage)
 
         self.rsm.photocathode_set_voltage(COUNTER_1, detector_1_v)
         self.rsm.photocathode_set_voltage(COUNTER_2, detector_2_v)
