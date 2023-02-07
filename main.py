@@ -2,9 +2,9 @@ import re
 
 import serial
 
-from bucket import Bucket
 from command_run import CommandRunner
-from settings import Settings
+from config.settings import Settings
+from rsm500.bucket import Bucket
 
 
 def main():

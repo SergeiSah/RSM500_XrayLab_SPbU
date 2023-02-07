@@ -4,9 +4,9 @@ import time
 import keyboard
 import serial
 
-from command import Command
-from definitions import *
+from config.definitions import *
 from handlers import arguments_type_checker_in_class
+from rsm500.command import Command
 
 
 class Bucket(object):

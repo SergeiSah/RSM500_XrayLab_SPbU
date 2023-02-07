@@ -5,9 +5,9 @@ from typing import Union
 import numpy as np
 import pandas as pd
 
-from bucket import Bucket
+from config.settings import Settings
 from convertor import *
-from settings import Settings
+from rsm500.bucket import Bucket
 from visualization import ScanPlotter
 
 

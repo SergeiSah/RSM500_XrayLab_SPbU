@@ -1,5 +1,10 @@
-## Elements of the RSM-500
+## RSM-500
 
+### Optical layout
+
+
+
+### Goniometer
 ![plot](https://github.com/SergeiSah/RSM500_XrayLab_SPbU/blob/master/Files/analyzing_camera_layout_1.0.png)
 
 ## Working principle
@@ -48,7 +53,7 @@ command will be output.
 - `move <motor> <step>`
     
    Move the specified motor by the given step relative to the position where the motor is currently located. 
-   Step for the motor 0 are in the revs of the reel, for motor 1 and 2 in grads, for the motor 3 in <span style="color:red">!!!</span>.
+   Step for the motor 0 are in the revs of the reel, for motor 1 and 2 in degrees, for the motor 3 in <span style="color:red">!!!</span>.
   - **motor** : *int*, number of the motor
   - **step** : *float*, value of step to move
 
@@ -77,7 +82,9 @@ command will be output.
   Set the same thresholds for the both detectors.
 
 
-- `setAPos <motor>`, Set absolute position of the motor in the `settings.ini` file to zero.
+- `setAPos <motor>`
+
+  Set absolute position of the motor in the `settings.ini` file to zero.
 
 
 - `getV`
@@ -90,7 +97,7 @@ command will be output.
   Output the thresholds set on the detectors to the console.
 
 
-- `getApos`
+- `getAPos`
 
   Output the absolute positions of the motors 1, 2 and 3 to the console.
 

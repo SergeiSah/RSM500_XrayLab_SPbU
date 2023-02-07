@@ -1,6 +1,6 @@
 import configparser
 
-from definitions import *
+from config.definitions import *
 
 
 class Settings:

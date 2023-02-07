@@ -1,7 +1,7 @@
 import logging
 import logging.config
 
-from definitions import *
+from config.definitions import *
 
 
 class LogHandler:

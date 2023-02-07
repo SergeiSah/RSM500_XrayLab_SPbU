@@ -1,9 +1,9 @@
-from bucket import Bucket
+from config.settings import Settings
 from convertor import *
 from handlers import *
 from logger import LogHandler
+from rsm500.bucket import Bucket
 from scans import Scan
-from settings import Settings
 
 
 class CommandRunner:

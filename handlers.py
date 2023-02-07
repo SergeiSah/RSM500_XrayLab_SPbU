@@ -2,7 +2,7 @@ from functools import wraps
 from inspect import signature
 from typing import Union
 
-from definitions import *
+from config.definitions import *
 from error_types import *
 
 
