@@ -3,6 +3,7 @@ from inspect import signature
 from typing import Union
 
 from config.definitions import *
+from convertor import real_step
 from error_types import *
 
 
@@ -81,7 +82,7 @@ def validate_and_log(scan_func):
 
         if 'motor' in f_params:    # Write absolute position of the motor to the log file
             self.log.info(f'Motor {f_params["motor"]} absolute position: '
-                          f'{self.settings.get_motor_apos(f_params["motor"])}')
+                          f'{self.settings.get_abs_motor_position(f_params["motor"])}')
 
         return was_stopped
     return wrapper
@@ -94,7 +95,6 @@ def validate_motor(motor: int, scan_func_name=None):
         if not motor != MOTOR_0:
             raise MotorException(f'Command [{scan_func_name}] works only with the motors '
                                  f'{MOTOR_1}, {MOTOR_2} and {MOTOR_3}.')
-        motors.remove(MOTOR_0)
 
     if motor not in motors:
         raise MotorException('Invalid number of the motor.')
@@ -108,3 +108,14 @@ def validate_exposure(exposure: float):
 def validate_photocathode_voltage(voltage: int):
     if not 0 <= voltage < 2048:
         raise ValueError(f'Voltage on the photocathode must be in the range of [0, 2048)')
+
+
+def validate_values(motor: int, values: list, logger) -> list:
+    valid_values = []
+    for value in values:
+        valid_value = real_step(motor, value)
+        if abs(value - valid_value) > 1E-5:
+            logger.warning(f'The value {value} converted to {valid_value}.')
+            valid_values.append(valid_value)
+        valid_values.append(value)
+    return valid_values
