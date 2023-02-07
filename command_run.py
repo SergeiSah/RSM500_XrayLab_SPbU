@@ -1,5 +1,3 @@
-from config.settings import Settings
-from convertor import *
 from handlers import *
 from logger import LogHandler
 from rsm500.bucket import Bucket
@@ -8,12 +6,12 @@ from scans import Scan
 
 class CommandRunner:
 
-    def __init__(self, rsm: Bucket):
+    def __init__(self, rsm: Bucket, settings: Settings):
         self.__lh = LogHandler()
         self.log = self.__lh.logger
 
         self.rsm = rsm
-        self.settings = Settings()
+        self.settings = settings
         self.scan = Scan(self.rsm, self.settings)
 
         self.modes = {
@@ -124,6 +122,7 @@ class CommandRunner:
         :param start: value in revs of the reel from which the scan starts
         :return: None
         """
+        step, = validate_values(MOTOR_0, [step], self.log)
         self.scan.motor_scan('escan', MOTOR_0, start, step_num, step, exposure)
 
     @validate_and_log
@@ -138,6 +137,7 @@ class CommandRunner:
         :param exposure: time exposure of the detectors
         :return: None
         """
+        start_position, step = validate_values(motor, [start_position, step], self.log)
         self.amove(motor, start_position)  # move to start position
         self.scan.motor_scan('ascan', motor, start_position, step_num, step, exposure)
 
@@ -153,9 +153,25 @@ class CommandRunner:
         :return: None
         """
         # move motors to start positions
+        start_position, step = validate_values(MOTOR_1, [start_position, step], self.log)
         self.amove(MOTOR_1, start_position)
-        self.amove(MOTOR_2, start_position)
+        self.amove(MOTOR_2, 2 * start_position)
         self.scan.motor_scan('a2scan', MOTOR_1, start_position, step_num, step, exposure, motor2=MOTOR_2)
+
+    def mscan(self, exposure: float = 1., time_steps_on_plot: int = 30):
+        """
+        Continuously displays CPS values on a plot over time.
+
+        :param exposure: exposure time of the detectors
+        :param time_steps_on_plot: number of time steps on a plot
+        :return: None
+        """
+
+        validate_exposure(exposure)
+        if not time_steps_on_plot > 1:
+            raise PlotException('Number of steps on a plot cannot be less than 1.')
+
+        self.scan.manual_scan(exposure, time_steps_on_plot)
 
     def move(self, motor: int, step: float):
         # TODO: complete the doc after determination of dependence of motor steps on distance for motor_3
@@ -169,6 +185,7 @@ class CommandRunner:
         """
         # FIXME: define limits for relative step on the basis of absolut motor positions
         validate_motor(motor)
+        step, = validate_values(motor, [step], self.log)
 
         # determine value of direction for the command motor_move of the Bucket class
         if step < 0:
@@ -182,7 +199,7 @@ class CommandRunner:
         m_step = to_motor_steps(motor, abs(step))
 
         start_pos_in_controller = self.rsm.motor_get_position()
-        start_abs_position = int(self.settings.get_motor_apos(motor)) if motor != MOTOR_0 else start_pos_in_controller
+        start_abs_position = self.settings.get_abs_motor_position(motor) if motor != MOTOR_0 else start_pos_in_controller
         self.log.info(f'Start motor {motor} [move] from position {start_abs_position} '
                       f'({start_pos_in_controller} in controller)')
 
@@ -208,11 +225,11 @@ class CommandRunner:
             self.rsm.motor_move(direction, m_step)
             is_arrived = self.rsm.motor_moving()
             if motor != MOTOR_0:
-                self.settings.change_motor_apos(motor, to_motor_steps(motor, step))
+                self.settings.set_abs_motor_position(motor, to_motor_steps(motor, step))
 
         status = 'arrived' if is_arrived else 'been stopped'
         end_position_in_controller = self.rsm.motor_get_position()
-        end_abs_position = int(self.settings.get_motor_apos(motor)) if motor != MOTOR_0 else end_position_in_controller
+        end_abs_position = self.settings.get_abs_motor_position(motor) if motor != MOTOR_0 else end_position_in_controller
         self.log.info(f'The motor {motor} has {status}, position: {end_abs_position} '
                       f'({end_position_in_controller} in controller)')
         self.log.info(f'Difference: {end_abs_position - start_abs_position} '
@@ -231,7 +248,7 @@ class CommandRunner:
         # TODO: define limits for relative step on the basis of absolut motor positions
         validate_motor(motor, scan_func_name=self.amove.__name__)
 
-        current_apos = to_step_units(motor, int(self.settings.get_motor_apos(motor)))
+        current_apos = to_step_units(motor, self.settings.get_abs_motor_position(motor))
         step = position - current_apos
 
         return self.move(motor, step)
@@ -315,8 +332,8 @@ class CommandRunner:
         :param motor_num: motor number
         :return: None
         """
-        current_position = int(self.settings.get_motor_apos(motor_num))
-        self.settings.change_motor_apos(motor_num, -current_position)
+        current_position = self.settings.get_abs_motor_position(motor_num)
+        self.settings.set_abs_motor_position(motor_num, -current_position)
         self.log.info(f'Absolute position of the motor {motor_num} was set to 0.')
 
     def getAPos(self):
@@ -328,25 +345,10 @@ class CommandRunner:
 
         print('Absolute positions of the motors:')
         for motor_num in [MOTOR_1, MOTOR_2, MOTOR_3]:
-            apos_in_motor_steps = int(self.settings.get_motor_apos(motor_num))
+            apos_in_motor_steps = self.settings.get_abs_motor_position(motor_num)
             apos_in_units = to_step_units(motor_num, apos_in_motor_steps)
-            print(f'Motor {motor_num}:   {apos_in_units:.2f} {self.scan.x_scale[motor_num].split(" ")[1]:<7} '
+            print(f'Motor {motor_num}:   {apos_in_units:.2f} {self.scan.x_scale[motor_num].split(" ")[1]:<5} '
                   f'({apos_in_motor_steps})')
-
-    def mscan(self, exposure: float = 1., time_steps_on_plot: int = 30):
-        """
-        Continuously displays CPS values on a plot over time.
-
-        :param exposure: exposure time of the detectors
-        :param time_steps_on_plot: number of time steps on a plot
-        :return: None
-        """
-
-        validate_exposure(exposure)
-        if not time_steps_on_plot > 1:
-            raise PlotException('Number of steps on a plot cannot be less than 1.')
-
-        self.scan.manual_scan(exposure, time_steps_on_plot)
 
     def info(self):
         print('\t==== List of commands with parameters ====')
