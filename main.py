@@ -16,9 +16,10 @@ def main():
     :return: None
     """
     s = Settings()  # global settings of the program
+
     # converts command to byte code and sends it to the controllers of the bucket of RSM
     rsm = Bucket(serial.Serial(port=s.port, baudrate=s.baudrate))
-    cr = CommandRunner(rsm)
+    cr = CommandRunner(rsm, s)
 
     while True:
         # extraction from the command the mode name and arguments

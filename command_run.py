@@ -1,3 +1,4 @@
+from convertor import to_motor_steps, to_step_units
 from handlers import *
 from logger import LogHandler
 from rsm500.bucket import Bucket
@@ -100,8 +101,8 @@ class CommandRunner:
 
         except KeyError as message:
             print(f'Invalid key value:', message)
-        except ValueError as message:
-            print('Invalid value:', message)
+        # except ValueError as message:
+        #     print('Invalid value:', message)
         except TypeError as message:
             print('Invalid datatype of the value:', message)
         except MotorException as message:
@@ -185,7 +186,7 @@ class CommandRunner:
         """
         # FIXME: define limits for relative step on the basis of absolut motor positions
         validate_motor(motor)
-        step, = validate_values(motor, [step], self.log)
+        step = validate_values(motor, [step], self.log)[0]
 
         # determine value of direction for the command motor_move of the Bucket class
         if step < 0:
@@ -265,10 +266,10 @@ class CommandRunner:
         for voltage in [detector_1_v, detector_2_v]:
             validate_photocathode_voltage(voltage)
 
-        self.rsm.photocathode_set_voltage(COUNTER_1, detector_1_v)
-        self.rsm.photocathode_set_voltage(COUNTER_2, detector_2_v)
-        self.log.info(f'Voltage on the photocathodes: {self.rsm.photocathode_get_voltage(COUNTER_1)}V (1), '
-                      f'{self.rsm.photocathode_get_voltage(COUNTER_2)}V (2)')
+        self.rsm.photocathode_set_voltage(COUNTER[1], detector_1_v)
+        self.rsm.photocathode_set_voltage(COUNTER[2], detector_2_v)
+        self.log.info(f'Voltage on the photocathodes: {self.rsm.photocathode_get_voltage(COUNTER[1])}V (1), '
+                      f'{self.rsm.photocathode_get_voltage(COUNTER[2])}V (2)')
 
     def getV(self):
         """
@@ -276,8 +277,8 @@ class CommandRunner:
 
         :return: None
         """
-        print(f'Voltage on the photocathodes: {self.rsm.photocathode_get_voltage(COUNTER_1)}V (1), '
-              f'{self.rsm.photocathode_get_voltage(COUNTER_2)}V (2)')
+        print(f'Voltage on the photocathodes: {self.rsm.photocathode_get_voltage(COUNTER[1])}V (1), '
+              f'{self.rsm.photocathode_get_voltage(COUNTER[2])}V (2)')
 
     def setT(self, detector_num: int, low_threshold: int, up_threshold: int):
         """
@@ -289,12 +290,14 @@ class CommandRunner:
         :return: None
         """
 
-        if detector_num not in [COUNTER_1, COUNTER_2]:
+        if detector_num not in COUNTER:
             raise DetectorException('invalid number of the detector.')
-        if not 0 <= low_threshold < 4096 or 0 <= low_threshold < 4096:
+        if not 0 <= low_threshold < 4096 or not 0 <= up_threshold < 4096:
             raise DetectorException('Thresholds must be in the range [0, 4096).')
         if not low_threshold < up_threshold:
             raise DetectorException('The lower threshold cannot be greater than or equal to the upper one.')
+
+        detector_num = COUNTER[detector_num]
 
         for id_level, value in zip([LOWER_THRESHOLD, UPPER_THRESHOLD], [low_threshold, up_threshold]):
             self.rsm.threshold_set(detector_num, id_level, value)
@@ -310,7 +313,7 @@ class CommandRunner:
         :param up_threshold: upper threshold in mV
         :return: None
         """
-        for detector_num in [COUNTER_1, COUNTER_2]:
+        for detector_num in COUNTER:
             self.setT(detector_num, low_threshold, up_threshold)
 
     def getT(self):
@@ -319,7 +322,7 @@ class CommandRunner:
 
         :return: None
         """
-        for i, cnt in enumerate([COUNTER_1, COUNTER_2]):
+        for i, cnt in enumerate([COUNTER[1], COUNTER[2]]):
             print(f'Thresholds of the detector {i + 1}: ', end='')
             for th in [LOWER_THRESHOLD, UPPER_THRESHOLD]:
                 print(f'{self.rsm.threshold_get(cnt, th)}', end=' ')

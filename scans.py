@@ -19,8 +19,8 @@ class Scan:
 
     x_scale = {
         MOTOR_0: 'reel [rev]',
-        MOTOR_1: 'theta [grad]',
-        MOTOR_2: '2theta [grad]',
+        MOTOR_1: 'theta [°]',
+        MOTOR_2: '2theta [°]',
         MOTOR_3: 'y [mm]',
     }
 
@@ -88,11 +88,11 @@ class Scan:
                     was_stopped = True
                     if motor != MOTOR_0:
                         delta = self.rsm.motor_get_position() - bucket_pos_before_moving
-                        self.settings.change_motor_apos(motor, delta)
+                        self.settings.set_abs_motor_position(motor, delta)
                     break
 
                 if motor != MOTOR_0:
-                    self.settings.change_motor_apos(motor, to_motor_steps(motor, step_val))
+                    self.settings.set_abs_motor_position(motor, to_motor_steps(motor, step_val))
 
             if was_stopped:
                 break
@@ -140,13 +140,13 @@ class Scan:
         self.rsm.exposure_set(int(exposure * 10))
         self.rsm.counter_start()
         if self.rsm.counter_working():  # if the measurement was not interrupted, return the data obtained
-            return [self.rsm.counter_get(COUNTER_1), self.rsm.counter_get(COUNTER_2)]
+            return [self.rsm.counter_get(COUNTER[1]), self.rsm.counter_get(COUNTER[2])]
         return None
 
     def max_file_number(self, pattern: str):
         # list of all .txt files in the directory with data files
         # data_files = list(filter(lambda f: '.txt' in f, os.listdir(self.settings.path_for_files_save)))
-        data_files = [f for f in os.listdir(self.settings.path_for_files_save) if f.endswith('.txt')]
+        data_files = [f for f in os.listdir(self.settings.path_to_datafiles) if f.endswith('.txt')]
         # list of file numbers
         # nums_list = list(map(lambda f: re.findall(pattern, f), data_files))
         # nums_list = [int(el[0]) for el in nums_list if len(el) > 0]
@@ -159,12 +159,12 @@ class Scan:
         new_file = f'{file_symbol}_{str.zfill(str(file_num + 1), 4)}.txt'
 
         # save metadata at the header of the file
-        with open(self.settings.path_for_files_save + new_file, 'w') as file:
+        with open(self.settings.path_to_datafiles + new_file, 'w') as file:
             for key, value in meta_data.items():
                 file.write(f'# {key}:\t{value}\n')   # definition of metadata string style
             file.write('\n')
 
-        self.results.to_csv(self.settings.path_for_files_save + new_file,
+        self.results.to_csv(self.settings.path_to_datafiles + new_file,
                             sep='\t',
                             mode='a',
                             float_format='%.3f')

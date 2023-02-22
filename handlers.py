@@ -3,6 +3,7 @@ from inspect import signature
 from typing import Union
 
 from config.definitions import *
+from config.settings import Settings
 from convertor import real_step
 from error_types import *
 
@@ -100,6 +101,13 @@ def validate_motor(motor: int, scan_func_name=None):
         raise MotorException('Invalid number of the motor.')
 
 
+def validate_destination(motor: int, destination: int):
+    s = Settings()
+    limits = s.get_limits(motor)
+    if not limits[0] <= destination <= limits[1]:
+        raise MotorException('Displacement of the motor will exceed the limits.')
+
+
 def validate_exposure(exposure: float):
     if not 1 <= int(exposure * 10) <= 9999:
         raise DetectorException(f'Exposure must be in the range of [0.1, 999], your value is {exposure}.')
@@ -115,7 +123,7 @@ def validate_values(motor: int, values: list, logger) -> list:
     for value in values:
         valid_value = real_step(motor, value)
         if abs(value - valid_value) > 1E-5:
-            logger.warning(f'The value {value} converted to {valid_value}.')
+            logger.warning(f'The value {value} was converted to {valid_value}.')
             valid_values.append(valid_value)
         valid_values.append(value)
     return valid_values

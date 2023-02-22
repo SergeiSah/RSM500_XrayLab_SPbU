@@ -25,14 +25,17 @@ class ScanPlotter:
                 return False
             else:
                 self.axs[0].plot(df.index, df.iloc[:, 1], 'r-', label='Detector 2')
+                self.axs[0].plot(df.index, df.iloc[:, 0], 'g-', label='Detector 1')
 
                 if df.shape[0] == 1:
                     continue
 
+                # self.axs[0].autoscale()
                 self.axs[0].set_xlim([df.index[0], df.index[-1]])
-                # self.axs[0].set_ylim([0 - self.Y_MARGIN * max(df.iloc[1]), max(df.iloc[1]) * (1 + self.Y_MARGIN)])
-                # self.axs[1].plot(df.index, df.iloc[:, 1], 'r-')
-                # self.axs[1].set_xlim([df.index[0], df.index[-1]])
+                if not df.iloc[1].min() == df.iloc[1].max():
+                    self.axs[0].set_ylim([0 - (1 + self.Y_MARGIN) * df.iloc[1].min(),
+                                          df.iloc[1].max() * (1 + self.Y_MARGIN)])
+
         self.figure.canvas.draw()
         return True
 
@@ -48,6 +51,7 @@ class ScanPlotter:
         self.axs[0].grid(True, linestyle='--')
 
         self.axs[0].plot([], [], 'r-', label='Detector 2')
+        self.axs[0].plot([], [], 'g-', label='Detector 1')
         self.axs[0].legend(fontsize=self.font_sizes['legend'])
 
         plt.xticks(fontsize=self.font_sizes['ticks'])

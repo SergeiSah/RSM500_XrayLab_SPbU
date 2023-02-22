@@ -137,7 +137,7 @@ class Bucket(object):
         :param value: Threshold value
         :return: Error code (1 byte)
         """
-        assert counter_id in [COUNTER_1, COUNTER_2]
+        assert counter_id in [COUNTER[1], COUNTER[2]]
         assert threshold_id in [LOWER_THRESHOLD, UPPER_THRESHOLD]
         assert 0 <= value < 4096
 
@@ -230,7 +230,7 @@ class Bucket(object):
         :param voltage: Voltage on the photocathode of the detector
         :return: Error code (1 byte)
         """
-        assert counter_id in [COUNTER_1, COUNTER_2]
+        assert counter_id in [COUNTER[1], COUNTER[2]]
         assert 0 <= voltage < 2048
 
         return self.run_command(Command('DS', 'B', 1, 4), counter_id, voltage)

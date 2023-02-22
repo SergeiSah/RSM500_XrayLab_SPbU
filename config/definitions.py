@@ -2,16 +2,15 @@ import os
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
-COUNTER_1 = 2   # the HV electron multiplier before the sample holder
-COUNTER_2 = 3   # after the sample holder
+COUNTER = {1: 2, 2: 3}   # the HV electron multipliers: real id and id in the controller
 
-LOWER_THRESHOLD = 0  # identifier for the lower threshold for counts in a detector
-UPPER_THRESHOLD = 1  # for upper threshold
+LOWER_THRESHOLD = 0   # identifier for the lower threshold for counts in a detector
+UPPER_THRESHOLD = 1   # for the upper threshold
 
-MOTOR_0 = 0  # energy scan
-MOTOR_1 = 1  # rotation of the sample holder
-MOTOR_2 = 2  # rotation of the second detector
-MOTOR_3 = 3  # sample holder movement along 'x' axis
+MOTOR_0 = 0   # energy scan
+MOTOR_1 = 1   # rotation of the sample holder
+MOTOR_2 = 2   # rotation of the second detector
+MOTOR_3 = 3   # sample holder movement along 'x' axis
 
 KEY_FOR_INTERRUPTION = 'ctrl+q'  # TODO: Перенести в settings
 
