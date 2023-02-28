@@ -4,7 +4,7 @@ import serial
 
 from command_run import CommandRunner
 from config.settings import Settings
-from rsm500.bucket import Bucket
+from rsm500.new_bucket import RSMController
 
 
 def main():
@@ -17,8 +17,8 @@ def main():
     """
     s = Settings()  # global settings of the program
 
-    # converts command to byte code and sends it to the controllers of the bucket of RSM
-    rsm = Bucket(serial.Serial(port=s.port, baudrate=s.baudrate))
+    # set port for the connection to the RSM controller
+    RSMController.set_port(serial.Serial(port=s.port, baudrate=s.baudrate))
     cr = CommandRunner(rsm, s)
 
     while True:

@@ -2,6 +2,7 @@ from convertor import to_motor_steps, to_step_units
 from handlers import *
 from logger import LogHandler
 from rsm500.bucket import Bucket
+from rsm500.new_bucket import Motor, Detector
 from scans import Scan
 
 
@@ -11,9 +12,13 @@ class CommandRunner:
         self.__lh = LogHandler()
         self.log = self.__lh.logger
 
-        self.rsm = rsm
+        self.motor = Motor()
+        self.detector_1 = Detector(COUNTER[1])
+        self.detector_2 = Detector(COUNTER[2])
+
+        # self.rsm = rsm
         self.settings = settings
-        self.scan = Scan(self.rsm, self.settings)
+        self.scan = Scan(self.settings)
 
         self.modes = {
             self.escan.__name__: self.escan,
@@ -157,7 +162,7 @@ class CommandRunner:
         start_position, step = validate_values(MOTOR_1, [start_position, step], self.log)
         self.amove(MOTOR_1, start_position)
         self.amove(MOTOR_2, 2 * start_position)
-        self.scan.motor_scan('a2scan', MOTOR_1, start_position, step_num, step, exposure, motor2=MOTOR_2)
+        self.scan.motor_scan('a2scan', MOTOR_1, start_position, step_num, step, exposure, motor2_id=MOTOR_2)
 
     def mscan(self, exposure: float = 1., time_steps_on_plot: int = 30):
         """
@@ -174,69 +179,71 @@ class CommandRunner:
 
         self.scan.manual_scan(exposure, time_steps_on_plot)
 
-    def move(self, motor: int, step: float):
+    def move(self, motor_id: int, step: float):
         # TODO: complete the doc after determination of dependence of motor steps on distance for motor_3
         """
         Move the specified motor by the given steps relative to the position where the motor is currently located.
         Steps for motor_0 are in the revs of the reel, for motor_1 and motor_2 in grads.
 
-        :param motor: number of the motor
+        :param motor_id: number of the motor
         :param step: value of the step to move motor
         :return: None
         """
         # FIXME: define limits for relative step on the basis of absolut motor positions
-        validate_motor(motor)
-        step = validate_values(motor, [step], self.log)[0]
+        validate_motor(motor_id)
+        step = validate_values(motor_id, [step], self.log)[0]
 
         # determine value of direction for the command motor_move of the Bucket class
         if step < 0:
-            direction = DIRECTION['negative'][motor]
+            direction = DIRECTION['negative'][motor_id]
         elif step > 0:
-            direction = DIRECTION['positive'][motor]
+            direction = DIRECTION['positive'][motor_id]
         else:
             return
 
-        self.rsm.motor_select(motor)
-        m_step = to_motor_steps(motor, abs(step))
+        self.motor.select(motor_id)
+        m_step = to_motor_steps(motor_id, abs(step))
 
-        start_pos_in_controller = self.rsm.motor_get_position()
-        start_abs_position = self.settings.get_abs_motor_position(motor) if motor != MOTOR_0 else start_pos_in_controller
-        self.log.info(f'Start motor {motor} [move] from position {start_abs_position} '
+        start_pos_in_controller = self.motor.get_position()
+        start_abs_position = self.settings.get_abs_motor_position(motor_id) if motor_id != MOTOR_0 \
+            else start_pos_in_controller
+        self.log.info(f'Start motor {motor_id} [move] from position {start_abs_position} '
                       f'({start_pos_in_controller} in controller)')
 
         # bypass the restriction for step value for MOTOR_0
-        if motor == MOTOR_0 and m_step >= 32768:
+        if motor_id == MOTOR_0 and m_step >= 32768:
 
             repetitions = m_step // 32767
             residual = m_step % 32767
             is_arrived = True
 
             for i in range(repetitions):
-                self.rsm.motor_move(direction, 32767)
-                is_arrived = self.rsm.motor_moving()
+                self.motor.move(direction, 32767)
+                is_arrived = self.motor.is_moving()
                 if not is_arrived:
                     break
 
             # if moving was not interrupted
             if is_arrived:
-                self.rsm.motor_move(direction, residual)
-                is_arrived = self.rsm.motor_moving()
+                self.motor.move(direction, residual)
+                is_arrived = self.motor.is_moving()
 
         else:
-            self.rsm.motor_move(direction, m_step)
-            is_arrived = self.rsm.motor_moving()
-            if motor != MOTOR_0:
-                self.settings.set_abs_motor_position(motor, to_motor_steps(motor, step))
+            self.motor.move(direction, m_step)
+            is_arrived = self.motor.is_moving()
+            if motor_id != MOTOR_0:
+                self.settings.set_abs_motor_position(motor_id, to_motor_steps(motor_id, step))
 
         status = 'arrived' if is_arrived else 'been stopped'
-        end_position_in_controller = self.rsm.motor_get_position()
-        end_abs_position = self.settings.get_abs_motor_position(motor) if motor != MOTOR_0 else end_position_in_controller
-        self.log.info(f'The motor {motor} has {status}, position: {end_abs_position} '
+        end_position_in_controller = self.motor.get_position()
+        end_abs_position = self.settings.get_abs_motor_position(motor_id) if motor_id != MOTOR_0 \
+            else end_position_in_controller
+        self.log.info(f'The motor {motor_id} has {status}, position: {end_abs_position} '
                       f'({end_position_in_controller} in controller)')
         self.log.info(f'Difference: {end_abs_position - start_abs_position} '
                       f'({end_position_in_controller - start_pos_in_controller} in controller)')
 
-        self.rsm.motor_select(4)
+        self.motor.select(4)
 
     def amove(self, motor: int, position: float):
         """
@@ -266,10 +273,11 @@ class CommandRunner:
         for voltage in [detector_1_v, detector_2_v]:
             validate_photocathode_voltage(voltage)
 
-        self.rsm.photocathode_set_voltage(COUNTER[1], detector_1_v)
-        self.rsm.photocathode_set_voltage(COUNTER[2], detector_2_v)
-        self.log.info(f'Voltage on the photocathodes: {self.rsm.photocathode_get_voltage(COUNTER[1])}V (1), '
-                      f'{self.rsm.photocathode_get_voltage(COUNTER[2])}V (2)')
+        self.detector_1.set_voltage_on_photocathode(detector_1_v)
+        self.detector_2.set_voltage_on_photocathode(detector_2_v)
+
+        self.log.info(f'Voltage on the photocathodes: {self.detector_1.get_voltage_on_photocathode()}V (1), '
+                      f'{self.detector_2.get_voltage_on_photocathode()}V (2)')
 
     def getV(self):
         """
@@ -277,8 +285,8 @@ class CommandRunner:
 
         :return: None
         """
-        print(f'Voltage on the photocathodes: {self.rsm.photocathode_get_voltage(COUNTER[1])}V (1), '
-              f'{self.rsm.photocathode_get_voltage(COUNTER[2])}V (2)')
+        print(f'Voltage on the photocathodes: {self.detector_1.get_voltage_on_photocathode()}V (1), '
+              f'{self.detector_2.get_voltage_on_photocathode()}V (2)')
 
     def setT(self, detector_num: int, low_threshold: int, up_threshold: int):
         """
@@ -297,13 +305,13 @@ class CommandRunner:
         if not low_threshold < up_threshold:
             raise DetectorException('The lower threshold cannot be greater than or equal to the upper one.')
 
-        detector_num = COUNTER[detector_num]
+        detector = self.detector_1 if detector_num == 1 else self.detector_2
 
         for id_level, value in zip([LOWER_THRESHOLD, UPPER_THRESHOLD], [low_threshold, up_threshold]):
-            self.rsm.threshold_set(detector_num, id_level, value)
+            detector.set_threshold(id_level, value)
 
-        self.log.info(f'Detector {detector_num} thresholds: {self.rsm.threshold_get(detector_num, LOWER_THRESHOLD)} mV,'
-                      f' {self.rsm.threshold_get(detector_num, UPPER_THRESHOLD)} mV')
+        self.log.info(f'Detector {detector_num} thresholds: {detector.get_threshold(LOWER_THRESHOLD)} mV,'
+                      f' {detector.get_threshold(UPPER_THRESHOLD)} mV')
 
     def set2T(self, low_threshold: int, up_threshold: int):
         """
@@ -322,11 +330,9 @@ class CommandRunner:
 
         :return: None
         """
-        for i, cnt in enumerate([COUNTER[1], COUNTER[2]]):
-            print(f'Thresholds of the detector {i + 1}: ', end='')
-            for th in [LOWER_THRESHOLD, UPPER_THRESHOLD]:
-                print(f'{self.rsm.threshold_get(cnt, th)}', end=' ')
-            print()
+        for i, detector in enumerate([self.detector_1, self.detector_2]):
+            print(f'Thresholds for the detector {i}: {detector.get_threshold(LOWER_THRESHOLD)} mV, '
+                  f'{detector.get_threshold(UPPER_THRESHOLD)} mV')
 
     def setAPos(self, motor_num: int):
         """

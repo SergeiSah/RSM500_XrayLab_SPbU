@@ -8,7 +8,6 @@ from rsm500.command import Command
 
 
 class RSMController:
-    MAX_COUNTERS = 6
     DELAY = 0.01
 
     port = None
@@ -48,11 +47,16 @@ class RSMController:
 
 
 class Motor(RSMController):
-    def __init__(self, motor_id: int):
-        self.motor_id = motor_id
+    motor_id = 4    # 4 is non-existent motor
 
-    def select(self):
-        return self.run_command(Command('SM', 'B', 1), self.motor_id)
+    # def __init__(self, motor_id: int = None):
+    #     if motor_id is not None:
+    #         self.select(motor_id)
+
+    @classmethod
+    def select(cls, motor_id: int):
+        cls.motor_id = motor_id
+        return super().run_command(Command('SM', 'B', 1), cls.motor_id)
 
     def status(self):
         return self.run_command(Command('RG', 'B'))
@@ -88,6 +92,8 @@ class Motor(RSMController):
 
 
 class Detector(RSMController):
+    MAX_DETECTORS = 6
+
     def __init__(self, detector_id: int):
         self.detector_id = detector_id
 
@@ -129,3 +135,6 @@ class Detector(RSMController):
     def enable_photocathode(self, is_enabled: bool):
         en_val = 1 if is_enabled else 0
         return self.run_command(Command('DM', 'B', 1, 1), self.detector_id, en_val)
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}({self.detector_id})'

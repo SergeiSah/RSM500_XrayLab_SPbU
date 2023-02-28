@@ -7,7 +7,7 @@ import pandas as pd
 
 from config.settings import Settings
 from convertor import *
-from rsm500.bucket import Bucket
+from rsm500.new_bucket import Motor, Detector
 from visualization import ScanPlotter
 
 
@@ -24,38 +24,43 @@ class Scan:
         MOTOR_3: 'y [mm]',
     }
 
-    def __init__(self, rsm: Bucket, settings: Settings):
-        self.rsm = rsm
+    def __init__(self, settings: Settings):
+        # self.rsm = rsm
         self.settings = settings
         self.results = None
+
+        self.motor = Motor()
+
+        self.detector_1 = Detector(COUNTER[1])
+        self.detector_2 = Detector(COUNTER[2])
 
         self.initial_state()
 
     def initial_state(self):
         self.results = pd.DataFrame(columns=['counter_1', 'counter_2'])
-        self.rsm.motor_select(4)    # remove voltage from all motors
+        self.motor.select(4)    # remove voltage from all motors
 
     def motor_scan(self,
                    scan_type: str,
-                   motor: int,
+                   motor_id: int,
                    start_val: float,  # it is assumed that the motor is already in this position
                    steps_num: int,
                    step_val: float,
                    exposure: float,
-                   motor2: int = None):
+                   motor2_id: int = None):
 
         meta = {'scan_type': scan_type,
                 'exposure': f'{exposure} s'}
 
-        motors = [motor] if motor2 is None else [motor, motor2]
+        motor_ids = [motor_id] if motor2_id is None else [motor_id, motor2_id]
         directions = [DIRECTION['positive'][motor] if step_val > 0 else DIRECTION['negative'][motor]
-                      for motor in motors]
-        step_vals = [step_val * i for i in range(1, len(motors) + 1)]   # step for the motor 2 is twice greater
+                      for motor in motor_ids]
+        step_vals = [step_val * i for i in range(1, len(motor_ids) + 1)]   # step for the motor 2 is twice greater
 
-        self.results.index.name = self.x_scale[motor]
+        self.results.index.name = self.x_scale[motor_id]
         file_num = self.max_file_number(self.pattern[scan_type] + r'_(\d*).txt')
 
-        pipe, plot_process = self.initialize_plotter(scan_type, {'x_scale': self.x_scale[motor], 'y_scale': 'Counts'})
+        pipe, plot_process = self.initialize_plotter(scan_type, {'x_scale': self.x_scale[motor_id], 'y_scale': 'Counts'})
 
         was_stopped = False
         for step_num in range(steps_num):
@@ -77,22 +82,22 @@ class Scan:
             if step_num == steps_num - 1:
                 break
 
-            for motor, direction, step_val in zip(motors, directions, step_vals):
-                self.rsm.motor_select(motor)
-                bucket_pos_before_moving = self.rsm.motor_get_position()    # position of the motor in the controller
+            for motor_id, direction, step_val in zip(motor_ids, directions, step_vals):
+                self.motor.select(motor_id)
+                bucket_pos_before_moving = self.motor.get_position()    # position of the motor in the controller
                 # FIXME: if motor step will be >32768, an error will rise
-                self.rsm.motor_move(direction, to_motor_steps(motor, abs(step_val)))
+                self.motor.move(direction, to_motor_steps(motor_id, abs(step_val)))
 
                 # if the motor moving was interrupted - stop scan
-                if not self.rsm.motor_moving():
+                if not self.motor.is_moving():
                     was_stopped = True
-                    if motor != MOTOR_0:
-                        delta = self.rsm.motor_get_position() - bucket_pos_before_moving
-                        self.settings.set_abs_motor_position(motor, delta)
+                    if motor_id != MOTOR_0:
+                        delta = self.motor.get_position() - bucket_pos_before_moving
+                        self.settings.set_abs_motor_position(motor_id, delta)
                     break
 
-                if motor != MOTOR_0:
-                    self.settings.set_abs_motor_position(motor, to_motor_steps(motor, step_val))
+                if motor_id != MOTOR_0:
+                    self.settings.set_abs_motor_position(motor_id, to_motor_steps(motor_id, step_val))
 
             if was_stopped:
                 break
@@ -137,10 +142,10 @@ class Scan:
         return data_pipe, plot_process
 
     def measurement(self, exposure: Union[int, float]):
-        self.rsm.exposure_set(int(exposure * 10))
-        self.rsm.counter_start()
-        if self.rsm.counter_working():  # if the measurement was not interrupted, return the data obtained
-            return [self.rsm.counter_get(COUNTER[1]), self.rsm.counter_get(COUNTER[2])]
+        self.detector_1.set_exposure(int(exposure * 10))
+        self.detector_1.start_count()
+        if self.detector_1.is_counting():  # if the measurement was not interrupted, return the data obtained
+            return [self.detector_1.read_detector_count(), self.detector_2.read_detector_count()]
         return None
 
     def max_file_number(self, pattern: str):
