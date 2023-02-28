@@ -9,7 +9,7 @@ from handlers import arguments_type_checker_in_class
 from rsm500.command import Command
 
 
-class Bucket(object):
+class Bucket:
     MAX_COUNTERS = 6
     DELAY = 0.01
 

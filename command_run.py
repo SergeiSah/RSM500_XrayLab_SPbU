@@ -101,8 +101,8 @@ class CommandRunner:
 
         except KeyError as message:
             print(f'Invalid key value:', message)
-        # except ValueError as message:
-        #     print('Invalid value:', message)
+        except ValueError as message:
+            print('Invalid value:', message)
         except TypeError as message:
             print('Invalid datatype of the value:', message)
         except MotorException as message:
