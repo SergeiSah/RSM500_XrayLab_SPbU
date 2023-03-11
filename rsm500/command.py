@@ -1,7 +1,7 @@
 import struct
 
 
-class Command(object):
+class Command:
     def __init__(self, op_code, return_format, *arg_lengths):
         """
 
@@ -12,6 +12,7 @@ class Command(object):
         assert isinstance(op_code, str)
         assert isinstance(return_format, str)
         assert isinstance(arg_lengths, tuple)
+
         self.return_struct = struct.Struct(return_format)
         self.op_code = op_code
         self.arg_lengths = arg_lengths
@@ -31,6 +32,7 @@ class Command(object):
         :return: string ready to be sent to the device
         """
         assert isinstance(args, tuple)
+
         result = '\x06' + self.op_code
         for i in range(0, len(args)):
             result += '{val:0{width}d}'.format(val=args[i], width=self.arg_lengths[i])
@@ -46,4 +48,5 @@ class Command(object):
         """
         assert len(response) == self.return_struct.size
         assert isinstance(response, bytes)
+
         return self.return_struct.unpack(response)

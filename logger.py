@@ -5,14 +5,22 @@ from config.definitions import *
 
 
 class LogHandler:
+    __instance = None
+
+    # realisation of singleton pattern
+    def __new__(cls, *args, **kwargs):
+        if not cls.__instance:
+            cls.__instance = super(LogHandler, cls).__new__(cls, *args, **kwargs)
+        return cls.__instance
+
     def __init__(self):
         logging.config.fileConfig(f'{ROOT_DIR}/config/loggers_config.ini')
         self.logger = logging.getLogger('root')
         # set format for stream handler
         self.logger.handlers[1].setFormatter(StreamFormatter('%(levelname)7s: %(message)s'))
 
-    def set_level(self, handler_name):
-        pass
+    # def set_level(self, handler_name):
+    #     self.logger.setLevel(logging.INFO)
 
 
 class StreamFormatter(logging.Formatter):

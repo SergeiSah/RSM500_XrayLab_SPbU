@@ -32,9 +32,9 @@ class ScanPlotter:
 
                 # self.axs[0].autoscale()
                 self.axs[0].set_xlim([df.index[0], df.index[-1]])
-                if not df.iloc[1].min() == df.iloc[1].max():
-                    self.axs[0].set_ylim([0 - (1 + self.Y_MARGIN) * df.iloc[1].min(),
-                                          df.iloc[1].max() * (1 + self.Y_MARGIN)])
+                # if not df.iloc[1].min() == df.iloc[1].max():
+                #     self.axs[0].set_ylim([0 - (1 + self.Y_MARGIN) * df.iloc[1].min(),
+                #                           df.iloc[1].max() * (1 + self.Y_MARGIN)])
 
         self.figure.canvas.draw()
         return True

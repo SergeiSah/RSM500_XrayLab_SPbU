@@ -8,7 +8,7 @@ from scans import Scan
 
 class CommandRunner:
 
-    def __init__(self, rsm: Bucket, settings: Settings):
+    def __init__(self, settings: Settings):
         self.__lh = LogHandler()
         self.log = self.__lh.logger
 

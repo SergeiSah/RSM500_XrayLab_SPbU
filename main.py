@@ -19,7 +19,7 @@ def main():
 
     # set port for the connection to the RSM controller
     RSMController.set_port(serial.Serial(port=s.port, baudrate=s.baudrate))
-    cr = CommandRunner(rsm, s)
+    cr = CommandRunner(s)
 
     while True:
         # extraction from the command the mode name and arguments
