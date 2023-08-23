@@ -1,7 +1,29 @@
 ## RSM-500
+The X-ray spectrometer-monochromator RSM-500 is designed for research work on the study of various spectra in the 
+radiation range of 1-55 nm, as well as for studying the phenomena caused by ultrasoft X-ray radiation in the same 
+wavelength range.
 
 ### Optical layout
+This device uses a concave spherical diffraction grating (D) as a dispersing element. Filtering of short-wave radiation 
+is carried out by a spherical mirror (B). The X-ray path passes through the following elements:
+
+1. X-ray source (A);
+2. Separating slit (H);
+3. Focusing filter-mirror (B);
+4. Input slit (C);
+5. Diffraction grating (D);
+6. Diaphragmatic slit (F);
+7. Output slit (E).
+
 ![plot](https://github.com/SergeiSah/RSM500_XrayLab_SPbU/blob/master/Files/optical_layout.png)
+
+The input slit C is fixed. The diffraction grating moves along the straight line BCD, and the output slit along CE. 
+As the grating moves, it rotates so that the diffraction angle $\psi=\arcsin\frac{DE}{R}$ remains constant ($R$ - 
+curvature radius of the grating) and incidence angle $\phi$ changes.
+
+The grating works in positive orders of diffraction. The equation of the grating is:
+$$ \cos\psi - \cos\phi = mp\lambda $$
+where $m$ - order of diffraction, $p$ - lines per mm, $\lambda$ - wavelength of the radiation.
 
 
 ### Goniometer
