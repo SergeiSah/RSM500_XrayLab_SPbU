@@ -1,7 +1,7 @@
 ## RSM-500
 
 ### Optical layout
-
+![plot](https://github.com/SergeiSah/RSM500_XrayLab_SPbU/blob/master/Files/optical_layout.png)
 
 
 ### Goniometer
