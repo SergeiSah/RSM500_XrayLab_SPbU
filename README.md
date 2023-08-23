@@ -22,7 +22,7 @@ As the grating moves, it rotates so that the diffraction angle $\psi=\arcsin\fra
 curvature radius of the grating) and incidence angle $\phi$ changes.
 
 The grating works in positive orders of diffraction. The equation of the grating is:
-$$ \cos\psi - \cos\phi = mp\lambda $$
+$$\cos\psi - \cos\phi = mp\lambda$$
 where $m$ - order of diffraction, $p$ - lines per mm, $\lambda$ - wavelength of the radiation.
 
 
