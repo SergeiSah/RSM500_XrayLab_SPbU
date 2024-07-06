@@ -4,7 +4,7 @@ import serial
 
 from command_run import CommandRunner
 from config.settings import Settings
-from rsm500.new_bucket import RSMController
+from rsm500.rsm_controller import RSMController
 
 
 def main():

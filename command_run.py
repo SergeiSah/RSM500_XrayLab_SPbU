@@ -1,8 +1,7 @@
 from convertor import to_motor_steps, to_step_units
 from handlers import *
 from logger import LogHandler
-from rsm500.bucket import Bucket
-from rsm500.new_bucket import Motor, Detector
+from rsm500.rsm_controller import Motor, Detector
 from scans import Scan
 
 
