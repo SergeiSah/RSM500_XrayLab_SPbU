@@ -1,5 +1,6 @@
 from functools import wraps
 from inspect import signature
+
 from typing import Union
 
 from config.definitions import *
@@ -125,5 +126,6 @@ def validate_values(motor: int, values: list, logger) -> list:
         if abs(value - valid_value) > 1E-5:
             logger.warning(f'The value {value} was converted to {valid_value}.')
             valid_values.append(valid_value)
-        valid_values.append(value)
+        else:
+            valid_values.append(value)
     return valid_values
