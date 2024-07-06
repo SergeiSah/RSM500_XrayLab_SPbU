@@ -3,7 +3,7 @@ import re
 import serial
 
 from command_run import CommandRunner
-from config.settings import Settings
+from config import Settings
 from rsm500.rsm_controller import RSMController
 
 

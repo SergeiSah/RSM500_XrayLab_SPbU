@@ -1,7 +1,7 @@
 from convertor import to_motor_steps, to_step_units
 from handlers import *
 from logger import LogHandler
-from rsm500.rsm_controller import Motor, Detector
+from rsm500 import Motor, Detector
 from scans import Scan
 
 
@@ -103,16 +103,16 @@ class CommandRunner:
 
             command(*_args)
 
-        except KeyError as message:
-            print(f'Invalid key value:', message)
-        except ValueError as message:
-            print('Invalid value:', message)
-        except TypeError as message:
-            print('Invalid datatype of the value:', message)
-        except MotorException as message:
-            print('MotorException:', message)
-        except DetectorException as message:
-            print('DetectorException:', message)
+        # except KeyError as message:
+        #     print(f'Invalid key value:', message)
+        # except ValueError as message:
+        #     print('Invalid value:', message)
+        # except TypeError as message:
+        #     print('Invalid datatype of the value:', message)
+        # except MotorException as message:
+        #     print('MotorException:', message)
+        # except DetectorException as message:
+        #     print('DetectorException:', message)
         except PlotException as message:
             print('PlotException:', message)
 

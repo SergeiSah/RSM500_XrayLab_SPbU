@@ -3,8 +3,8 @@ import time
 import keyboard
 import serial
 
-from definitions import KEY_FOR_INTERRUPTION
-from rsm500.command import Command
+from config import KEY_FOR_INTERRUPTION
+from rsm500 import Command
 
 
 class RSMController:

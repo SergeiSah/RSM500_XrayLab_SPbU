@@ -1,10 +1,8 @@
 from functools import wraps
 from inspect import signature
-
 from typing import Union
 
-from config.definitions import *
-from config.settings import Settings
+from config import *
 from convertor import real_step
 from error_types import *
 
