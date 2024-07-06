@@ -1,6 +1,7 @@
 import os
 
-ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+SETTINGS_DIR = 'src/config'
 
 COUNTER = {1: 2, 2: 3}   # the HV electron multipliers: real id and id in the controller
 

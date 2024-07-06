@@ -1,14 +1,14 @@
+import os
 import re
 from multiprocessing import Pipe, Process
+from typing import Union
 
 import numpy as np
 import pandas as pd
-from typing import Union
 
-from config.settings import Settings
-from convertor import *
-from rsm500.rsm_controller import Motor, Detector
-from visualization import ScanPlotter
+from .convertor import *
+from .rsm500.rsm_controller import Motor, Detector
+from .visualization import ScanPlotter
 
 
 class Scan:

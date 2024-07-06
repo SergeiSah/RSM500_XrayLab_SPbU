@@ -2,9 +2,9 @@ from functools import wraps
 from inspect import signature
 from typing import Union
 
-from config import *
-from convertor import real_step
-from error_types import *
+from .config import *
+from .convertor import real_step
+from .error_types import *
 
 
 def arguments_type_checker_in_class(func):

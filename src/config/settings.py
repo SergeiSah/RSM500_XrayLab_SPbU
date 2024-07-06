@@ -4,7 +4,7 @@ from .definitions import *
 
 
 class Settings:
-    path_to_settings_ini = os.path.join(ROOT_DIR, r'config\settings.ini')
+    path_to_settings_ini = os.path.join(ROOT_DIR, SETTINGS_DIR, 'settings.ini')
 
     def __init__(self):
         self._config = configparser.ConfigParser()

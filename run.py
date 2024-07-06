@@ -2,9 +2,9 @@ import re
 
 import serial
 
-from command_run import CommandRunner
-from config import Settings
-from rsm500.rsm_controller import RSMController
+from src.command_run import CommandRunner
+from src.config import Settings
+from src.rsm500.rsm_controller import RSMController
 
 
 def main():

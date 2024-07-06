@@ -3,7 +3,7 @@ from setuptools import setup
 setup(
     name='RSM-controller',
     version='0.1.0',
-    packages=['config', 'rsm500'],
+    packages=['src'],
     url='https://github.com/SergeiSah/RSM500_XrayLab_SPbU',
     license='',
     author='Sergei Sakhonenkov',

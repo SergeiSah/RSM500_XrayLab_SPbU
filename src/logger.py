@@ -1,7 +1,8 @@
 import logging
 import logging.config
+import os
 
-from config.definitions import *
+from .config import *
 
 
 class LogHandler:
@@ -14,7 +15,7 @@ class LogHandler:
         return cls.__instance
 
     def __init__(self):
-        logging.config.fileConfig(f'{ROOT_DIR}/config/loggers_config.ini')
+        logging.config.fileConfig(os.path.join(ROOT_DIR, SETTINGS_DIR, 'loggers_config.ini'))
         self.logger = logging.getLogger('root')
         # set format for stream handler
         self.logger.handlers[1].setFormatter(StreamFormatter('%(levelname)7s: %(message)s'))
